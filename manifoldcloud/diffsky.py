@@ -2,8 +2,8 @@
 
 import asyncio
 from bisect import bisect_right
+from collections import OrderedDict
 from contextlib import contextmanager
-from functools import lru_cache
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -15,8 +15,8 @@ import hdf5plugin  # Registers the Blosc2 filter with h5py.
 import pandas as pd
 
 GROUPS = ("cores", "synth_cores")
-BLOCK_BYTES = 64 * 1024
-COALESCE_GAP = 16 * 1024
+BLOCK_BYTES = 128 * 1024
+COALESCE_GAP = 64 * 1024
 MAX_RANGE_BYTES = 8 * 1024 * 1024
 CONNECTIONS = 4
 HEADERS = {"User-Agent": "ManifoldCloud/0.1", "Accept-Encoding": "identity"}
@@ -111,7 +111,7 @@ class _RangeFile(HTTPFile):
         self.budget = budget
         self._parts = {}
         self._starts = []
-        self._block = lru_cache(maxsize=128)(self._load_block)
+        self._blocks = OrderedDict()
         super().__init__(fs, url, session=session, size=size, cache_type="none", loop=fs.loop)
 
     async def _request(self, start, end):
@@ -148,8 +148,18 @@ class _RangeFile(HTTPFile):
                     raise
                 await asyncio.sleep(2 ** attempt)
 
-    def _load_block(self, start):
-        return sync(self.loop, self._request, start, min(start + BLOCK_BYTES, self.size))
+    def _remember_block(self, start, data):
+        self._blocks[start] = data
+        self._blocks.move_to_end(start)
+        if len(self._blocks) > 256:
+            self._blocks.popitem(last=False)
+
+    def _block(self, start):
+        if start not in self._blocks:
+            data = sync(self.loop, self._request, start, min(start + BLOCK_BYTES, self.size))
+            self._remember_block(start, data)
+        self._blocks.move_to_end(start)
+        return self._blocks[start]
 
     def _fetch_range(self, start, end):
         end = min(end, self.size)
@@ -169,14 +179,40 @@ class _RangeFile(HTTPFile):
         return b"".join(parts)
 
     async def _load_ranges(self, ranges):
-        for index in range(0, len(ranges), CONNECTIONS):
-            group = ranges[index:index + CONNECTIONS]
-            results = await asyncio.gather(*(self._request(*pair) for pair in group),
-                                           return_exceptions=True)
-            for (start, _), result in zip(group, results, strict=True):
-                if isinstance(result, BaseException):
-                    raise result
-                self._parts[start] = result
+        remaining = iter(ranges)
+        results = {}
+        failures = []
+
+        async def worker():
+            for start, end in remaining:
+                if failures:
+                    break
+                try:
+                    results[start] = await self._request(start, end)
+                except Exception as error:
+                    failures.append(error)
+
+        await asyncio.gather(*(worker() for _ in range(CONNECTIONS)))
+        if failures:
+            raise failures[0]
+        return results
+
+    def prefetch_headers(self, groups, columns):
+        """Batch metadata reads by using the HDF5 addresses of hard links."""
+        addresses = set()
+        for group in groups:
+            for column in columns:
+                try:
+                    link = group.id.links.get_info(column.encode())
+                except (KeyError, RuntimeError) as error:
+                    raise KeyError(f"Missing Diffsky column {column!r} in {group.name}") from error
+                if link.type == h5py.h5l.TYPE_HARD:
+                    addresses.add(link.u // BLOCK_BYTES * BLOCK_BYTES)
+        ranges = [(start, min(start + BLOCK_BYTES, self.size))
+                  for start in addresses if start not in self._blocks]
+        for start, data in sync(self.loop, self._load_ranges, _coalesce(ranges)).items():
+            for offset in range(0, len(data), BLOCK_BYTES):
+                self._remember_block(start + offset, data[offset:offset + BLOCK_BYTES])
 
     @contextmanager
     def prefetch(self, datasets):
@@ -190,7 +226,7 @@ class _RangeFile(HTTPFile):
                 offset = dataset.id.get_offset()
                 ranges.append((offset, offset + dataset.nbytes))
         try:
-            sync(self.loop, self._load_ranges, _coalesce(ranges))
+            self._parts = sync(self.loop, self._load_ranges, _coalesce(ranges))
             self._starts = sorted(self._parts)
             yield
         finally:
@@ -222,6 +258,9 @@ def read_columns(file, columns):
     if len(set(columns)) != len(columns) or "is_synthetic" in columns:
         raise ValueError("Requested Diffsky columns must be unique and exclude is_synthetic")
     groups = [file[f"{name}/data"] for name in GROUPS]
+    remote = getattr(file, "_range_file", None)
+    if remote is not None:
+        remote.prefetch_headers(groups, columns)
     datasets = []
     for group in groups:
         try:
@@ -229,8 +268,8 @@ def read_columns(file, columns):
         except KeyError as error:
             missing = next(column for column in columns if column not in group)
             raise KeyError(f"Missing Diffsky column {missing!r} in {group.name}") from error
-    row_counts = [len(next(iter(group.values()))) for group in groups]
-    remote = getattr(file, "_range_file", None)
+    row_counts = [len(items[0] if items else next(iter(group.values())))
+                  for items, group in zip(datasets, groups, strict=True)]
 
     def frames():
         return [pd.DataFrame({**{column: dataset[:] for column, dataset in zip(columns, group)},
@@ -257,6 +296,7 @@ def shell_info(file):
     return {
         "catalogue": str(catalogue),
         "z_range": tuple(float(value) for value in header["lightcone"].attrs["z_range"]),
-        "rows": {name: len(next(iter(group.values()))) for name, group in groups.items()},
+        "rows": {name: len(group["gal_id"] if "gal_id" in group else next(iter(group.values())))
+                 for name, group in groups.items()},
         "columns": {name: len(group) for name, group in groups.items()},
     }
