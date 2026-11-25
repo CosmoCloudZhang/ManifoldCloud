@@ -7,3 +7,4 @@
 - S00 uses the mentor environment's existing build tooling for editable installation to avoid downloading build dependencies outside the package allow-list.
 - S01 used approved outbound access to PyPI after the restricted sandbox could not resolve the package index. The three requested distributions resolved pytest's required dependencies `iniconfig` and `pluggy` inside `.venv`. The mentor conda environment was unchanged.
 - S02 uses noise seeds 42 and 43 for Flagship and Diffsky, respectively, and a student subset fraction of 0.02. These are configurable defaults for reproducible runs and can be revised after the mentor measures the final files.
+- S04 keeps fsspec's HTTP file interface and uses strict 206 responses, exact range endpoints, bounded metadata caching and coalesced prefetch. The Diffsky server reports `*` for total size in `Content-Range`; the reader accepts this with the exact offsets and verifies the received length. HEAD supplies the file size.
