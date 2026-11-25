@@ -1,0 +1,47 @@
+# CosmoConda: mentor environment for the UMAPZ project
+#
+# Create:   conda env create -f environment.yml
+# Activate: conda activate CosmoConda        (the name is case-sensitive)
+# Check:    python lectures/lecture04/output/check_environment.py
+# Update:   conda env update -n CosmoConda -f environment.yml --prune
+#
+# The core block is the student's recipe (lectures/lecture04/output/environment.yml)
+# unchanged, so anything prepared here runs in the student's `umapz` as well.
+# Keep the two blocks in step when either file is edited.
+name: CosmoConda
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  # --- core: identical to the student's umapz -----------------------------
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
+  - astropy          # FITS tables, units, cosmology
+  - h5py             # HDF5 catalogues (pop-cosmos)
+  - pyarrow          # Parquet catalogues (CosmoHub, OpenUniverse); reads S3 too
+  - scikit-learn     # PCA, k-means, scaling, splits
+  - umap-learn       # UMAP (pulls in numba and pynndescent)
+  - opentsne         # t-SNE that can place new points on a frozen map
+  - minisom          # pure-Python SOM
+  - somoclu          # fast C++ SOM
+  - jupyterlab
+  - ipykernel
+  - ipywidgets
+  - tqdm
+  # --- mentor layer: catalogue preparation and extensions -----------------
+  - healpy           # HEALPix pixel lookup for the Roman-Rubin files (nside 32)
+  - speclite         # filter curves, for photon-flux to AB zero-points
+  - python-duckdb    # trim the 34 GB Flagship 2 cut without loading it
+  - pot              # optimal transport, tier 2 colour matching (import ot)
+  # --- pip-only -------------------------------------------------------------
+  - pip
+  - pip:
+      - photerr      # Rubin/Euclid/Roman noise model; PyPI is ahead of conda-forge
+#
+# Deliberately not here (see the project plan, section 2.1):
+#   opencosmo        pins astropy < 8 and numpy < 2.5; give it its own environment
+#   pytorch, zuko    tier 3 only, decided at Phase III
+#   pz-rail-base, tables-io, then `pip install --no-deps pz-rail-som`
+#                    optional RAIL cross-check, not needed before Class 9
