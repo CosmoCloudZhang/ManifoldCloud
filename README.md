@@ -18,7 +18,7 @@ This repository holds the shared software: one conda environment, the code that 
 The environment is built and tested on macOS with Apple silicon. The recipe also resolves for Intel Macs but has not been run on one. You need [Miniforge](https://conda-forge.org/download/) or another conda installation.
 
 ```bash
-git clone <repository URL>
+git clone https://github.com/CosmoCloudZhang/ManifoldCloud.git
 cd ManifoldCloud
 conda env create -f environment.yml
 conda activate ManifoldConda
