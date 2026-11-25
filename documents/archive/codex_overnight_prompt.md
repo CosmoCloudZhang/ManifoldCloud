@@ -31,7 +31,7 @@ You are working in the repository root, the folder `ManifoldCloud/`. Nobody is a
 - Create a virtual environment inside the repository that reuses the mentor environment's packages:
 
   ```bash
-  /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/bin/python -m venv --system-site-packages .venv
+  <conda>/envs/CosmoConda/bin/python -m venv --system-site-packages .venv
   ```
 
   ```bash
@@ -47,7 +47,7 @@ You are working in the repository root, the folder `ManifoldCloud/`. Nobody is a
 - If the network is unavailable for `pip`:
   - write tests as `unittest.TestCase` classes, which `pytest` can also run later;
   - mock HTTP with `unittest.mock` in place of `responses`;
-  - run tests with `/Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/bin/python -B -m unittest discover -s tests`;
+  - run tests with `<conda>/envs/CosmoConda/bin/python -B -m unittest discover -s tests`;
   - say so at the top of the report.
 - If `hdf5plugin` installs but `h5py.h5z.filter_avail(32026)` is false, build the reader on `documents/reference/blosc2_fallback_decoder.py`, and record it in the decisions log.
 

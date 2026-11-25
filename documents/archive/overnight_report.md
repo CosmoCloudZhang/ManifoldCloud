@@ -257,7 +257,7 @@ git init
 Exit code 1.
 
 ````text
-/Users/CosmoCloudZhang/Project/ManifoldCloud/.git: Operation not permitted
+<repository>/.git: Operation not permitted
 ````
 
 #### S00 approved init
@@ -269,7 +269,7 @@ git init
 Exit code 0.
 
 ````text
-Initialized empty Git repository in /Users/CosmoCloudZhang/Project/ManifoldCloud/.git/
+Initialized empty Git repository in <repository>/.git/
 ````
 
 #### S00 baseline
@@ -298,13 +298,13 @@ environment.yml
 #### S00 install import ignores
 
 ````bash
-/Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/bin/python -m venv --system-site-packages .venv && .venv/bin/python -m pip install --no-cache-dir --no-deps --no-build-isolation -e . && .venv/bin/python -c 'import manifoldcloud; print(manifoldcloud.__file__)' && git check-ignore config/local.toml .env x.parquet
+<conda>/envs/CosmoConda/bin/python -m venv --system-site-packages .venv && .venv/bin/python -m pip install --no-cache-dir --no-deps --no-build-isolation -e . && .venv/bin/python -c 'import manifoldcloud; print(manifoldcloud.__file__)' && git check-ignore config/local.toml .env x.parquet
 ````
 
 Exit code 0.
 
 ````text
-Obtaining file:///Users/CosmoCloudZhang/Project/ManifoldCloud
+Obtaining file://<repository>
   Checking if build backend supports build_editable: started
   Checking if build backend supports build_editable: finished with status 'done'
   Preparing editable metadata (pyproject.toml): started
@@ -313,11 +313,11 @@ Building wheels for collected packages: manifoldcloud
   Building editable for manifoldcloud (pyproject.toml): started
   Building editable for manifoldcloud (pyproject.toml): finished with status 'done'
   Created wheel for manifoldcloud: filename=manifoldcloud-0.1.0-0.editable-py3-none-any.whl size=2802 sha256=cdff91847c12d1e89c5f5af57b24fce4a4a2384616f02165bd30322e48218c02
-  Stored in directory: /private/var/folders/lt/xp9ytfds5ss9c6lkdd9qnz_c0000gp/T/pip-ephem-wheel-cache-lcbt_627/wheels/7f/61/47/1e3218b865f0c702523965ec7970c624c7f450197ebe2b9a8b
+  Stored in directory: <tmp>/pip-ephem-wheel-cache-lcbt_627/wheels/7f/61/47/1e3218b865f0c702523965ec7970c624c7f450197ebe2b9a8b
 Successfully built manifoldcloud
 Installing collected packages: manifoldcloud
 Successfully installed manifoldcloud-0.1.0
-/Users/CosmoCloudZhang/Project/ManifoldCloud/manifoldcloud/__init__.py
+<repository>/manifoldcloud/__init__.py
 config/local.toml
 .env
 x.parquet
@@ -371,20 +371,20 @@ Collecting pytest
   Downloading pytest-9.2.0-py3-none-any.whl.metadata (7.9 kB)
 Collecting responses
   Downloading responses-0.26.3-py3-none-any.whl.metadata (48 kB)
-Requirement already satisfied: h5py>=3.0.0 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from hdf5plugin) (3.16.0)
+Requirement already satisfied: h5py>=3.0.0 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from hdf5plugin) (3.16.0)
 Collecting iniconfig>=2 (from pytest)
   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
-Requirement already satisfied: packaging>=24 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from pytest) (26.3)
+Requirement already satisfied: packaging>=24 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from pytest) (26.3)
 Collecting pluggy<2,>=1.6 (from pytest)
   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
-Requirement already satisfied: pygments>=2.15 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from pytest) (2.21.0)
-Requirement already satisfied: requests<3.0,>=2.30.0 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from responses) (2.34.2)
-Requirement already satisfied: urllib3<3.0,>=1.25.10 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from responses) (2.8.0)
-Requirement already satisfied: pyyaml in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from responses) (6.0.3)
-Requirement already satisfied: numpy>=1.21.2 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from h5py>=3.0.0->hdf5plugin) (2.5.4)
-Requirement already satisfied: charset_normalizer<4,>=2 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses) (3.5.1)
-Requirement already satisfied: idna<4,>=2.5 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses) (3.20)
-Requirement already satisfied: certifi>=2023.5.7 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses) (2026.10.23)
+Requirement already satisfied: pygments>=2.15 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from pytest) (2.21.0)
+Requirement already satisfied: requests<3.0,>=2.30.0 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from responses) (2.34.2)
+Requirement already satisfied: urllib3<3.0,>=1.25.10 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from responses) (2.8.0)
+Requirement already satisfied: pyyaml in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from responses) (6.0.3)
+Requirement already satisfied: numpy>=1.21.2 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from h5py>=3.0.0->hdf5plugin) (2.5.4)
+Requirement already satisfied: charset_normalizer<4,>=2 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses) (3.5.1)
+Requirement already satisfied: idna<4,>=2.5 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses) (3.20)
+Requirement already satisfied: certifi>=2023.5.7 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses) (2026.10.23)
 Downloading hdf5plugin-7.1.0-py3-none-macosx_11_0_arm64.whl (6.1 MB)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.1/6.1 MB 52.3 MB/s eta 0:00:00
 Downloading pytest-9.2.0-py3-none-any.whl (411 kB)
@@ -1035,8 +1035,8 @@ Exit code 0.
 Exit code 0.
 
 ````text
-/Users/CosmoCloudZhang/Project/ManifoldCloud/scripts/queries/flagship_mirror_843.sql
-/Users/CosmoCloudZhang/Project/ManifoldCloud/scripts/queries/flagship_mirror_843_count.sql
+<repository>/scripts/queries/flagship_mirror_843.sql
+<repository>/scripts/queries/flagship_mirror_843_count.sql
 SELECT
   galaxy_id,
   halo_id,
@@ -1351,7 +1351,7 @@ Exit code 1.
 ````text
 Traceback (most recent call last):
   File "<stdin>", line 22, in <module>
-  File "/Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages/requests/structures.py", line 65, in __getitem__
+  File "<conda>/envs/CosmoConda/lib/python3.12/site-packages/requests/structures.py", line 65, in __getitem__
     return self._store[key.lower()][1]
            ~~~~~~~~~~~^^^^^^^^^^^^^
 KeyError: 'content-length'
@@ -1511,11 +1511,11 @@ Diffsky r vs speclite lsst2023: maximum difference 2.24e-14 (8,500 samples)
 Diffsky i vs speclite lsst2023: maximum difference 6.12e-14 (8,500 samples)
 Diffsky z vs speclite lsst2023: maximum difference 1.53e-14 (8,500 samples)
 Diffsky y vs speclite lsst2023: maximum difference 1.47e-14 (8,500 samples)
-/Users/CosmoCloudZhang/Project/ManifoldCloud/report/data_validation_summary.json
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/number_counts.png
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/redshift_distribution.png
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/sizes.png
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/colours.png
+<repository>/report/data_validation_summary.json
+<repository>/figures/data_validation/number_counts.png
+<repository>/figures/data_validation/redshift_distribution.png
+<repository>/figures/data_validation/sizes.png
+<repository>/figures/data_validation/colours.png
 ````
 
 #### S11 unit checks
@@ -1550,11 +1550,11 @@ Diffsky r vs speclite lsst2023: maximum difference 2.24e-14 (8,500 samples)
 Diffsky i vs speclite lsst2023: maximum difference 6.12e-14 (8,500 samples)
 Diffsky z vs speclite lsst2023: maximum difference 1.53e-14 (8,500 samples)
 Diffsky y vs speclite lsst2023: maximum difference 1.47e-14 (8,500 samples)
-/Users/CosmoCloudZhang/Project/ManifoldCloud/report/data_validation_summary.json
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/number_counts.png
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/redshift_distribution.png
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/sizes.png
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/colours.png
+<repository>/report/data_validation_summary.json
+<repository>/figures/data_validation/number_counts.png
+<repository>/figures/data_validation/redshift_distribution.png
+<repository>/figures/data_validation/sizes.png
+<repository>/figures/data_validation/colours.png
 ````
 
 #### S11 final artifact QA
@@ -1592,11 +1592,11 @@ Diffsky r vs speclite lsst2023: maximum difference 2.24e-14 (8,500 samples)
 Diffsky i vs speclite lsst2023: maximum difference 6.12e-14 (8,500 samples)
 Diffsky z vs speclite lsst2023: maximum difference 1.53e-14 (8,500 samples)
 Diffsky y vs speclite lsst2023: maximum difference 1.47e-14 (8,500 samples)
-/Users/CosmoCloudZhang/Project/ManifoldCloud/report/data_validation_summary.json
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/number_counts.png
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/redshift_distribution.png
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/sizes.png
-/Users/CosmoCloudZhang/Project/ManifoldCloud/figures/data_validation/colours.png
+<repository>/report/data_validation_summary.json
+<repository>/figures/data_validation/number_counts.png
+<repository>/figures/data_validation/redshift_distribution.png
+<repository>/figures/data_validation/sizes.png
+<repository>/figures/data_validation/colours.png
 colours.png: readable PNG, (1440, 1280), SHA-256 verified
 number_counts.png: readable PNG, (1280, 752), SHA-256 verified
 redshift_distribution.png: readable PNG, (1280, 752), SHA-256 verified
@@ -1639,8 +1639,8 @@ Exit code 0.
 
 ````text
 Catalogue A, seed 42: {'rows': 400, 'science_rows': 105, 'control_rows': 103, 'i_error_rows': 25, 'median_i_error': 0.13366679847240448, 'science_true_i_gt_25_5_rows': 0, 'science_true_i_gt_25_5_fraction': 0.0, 'science_true_i_gt_cut_rows': 8, 'science_true_i_gt_cut_fraction': 0.0761904761904762, 'i_limit': 24.1}
-Wrote /Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/synthetic-data/processed/year1/A.parquet
-Wrote /Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/synthetic-data/processed/year1/summary.json
+Wrote <repository>/.venv/tmp/synthetic-data/processed/year1/A.parquet
+Wrote <repository>/.venv/tmp/synthetic-data/processed/year1/summary.json
 ````
 
 #### S12 pilot reproducibility
@@ -1669,12 +1669,12 @@ Exit code 0.
 ````text
 Catalogue B, seed 43: {'rows': 257982, 'science_rows': 116460, 'control_rows': 116097, 'i_error_rows': 8939, 'median_i_error': 0.12755687534809113, 'science_true_i_gt_25_5_rows': 4, 'science_true_i_gt_25_5_fraction': 3.434655675768504e-05, 'science_true_i_gt_cut_rows': 2912, 'science_true_i_gt_cut_fraction': 0.025004293319594712, 'i_limit': 24.1}
 Diffsky input: 4 shells. Diffsky is incomplete for a Year 1 sample below approximately z = 0.25.
-Wrote /Users/CosmoCloudZhang/Project/ManifoldCloud/data/processed/year1/B.parquet
-Wrote /Users/CosmoCloudZhang/Project/ManifoldCloud/data/processed/year1/summary.json
+Wrote <repository>/data/processed/year1/B.parquet
+Wrote <repository>/data/processed/year1/summary.json
 Catalogue B, seed 43: {'rows': 257982, 'science_rows': 116460, 'control_rows': 116097, 'i_error_rows': 8939, 'median_i_error': 0.12755687534809113, 'science_true_i_gt_25_5_rows': 4, 'science_true_i_gt_25_5_fraction': 3.434655675768504e-05, 'science_true_i_gt_cut_rows': 2912, 'science_true_i_gt_cut_fraction': 0.025004293319594712, 'i_limit': 24.1}
 Diffsky input: 4 shells. Diffsky is incomplete for a Year 1 sample below approximately z = 0.25.
-Wrote /Users/CosmoCloudZhang/Project/ManifoldCloud/data/processed/year1/B.parquet
-Wrote /Users/CosmoCloudZhang/Project/ManifoldCloud/data/processed/year1/summary.json
+Wrote <repository>/data/processed/year1/B.parquet
+Wrote <repository>/data/processed/year1/summary.json
 B.parquet: identical SHA-256 across runs (eff00303a6220beb303843104b29ae19bb4ddc174a6707719f05913ecfdbcca8)
 summary.json: identical SHA-256 across runs (c5dcfc74df2244af001c765e7dbf9d27e6338c57921fe55edcb23a3de2cc2a4d)
 ````
@@ -1747,8 +1747,8 @@ Exit code 0.
 
 ````text
 Catalogue A, seed 42: {'rows': 400, 'science_rows': 105, 'control_rows': 103, 'i_error_rows': 25, 'median_i_error': 0.13366679847240448, 'science_true_i_gt_25_5_rows': 0, 'science_true_i_gt_25_5_fraction': 0.0, 'science_true_i_gt_cut_rows': 8, 'science_true_i_gt_cut_fraction': 0.0761904761904762, 'i_limit': 24.1}
-Wrote /Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/synthetic-data/processed/year1/A.parquet
-Wrote /Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/synthetic-data/processed/year1/summary.json
+Wrote <repository>/.venv/tmp/synthetic-data/processed/year1/A.parquet
+Wrote <repository>/.venv/tmp/synthetic-data/processed/year1/summary.json
 Synthetic A.parquet: identical SHA-256 across runs (1c0cfb2dcb8b30fa2ba3c08ee8444a2aef9ad5a2dc1c6b99a1a5e949be3e77dd)
 Synthetic summary.json: identical SHA-256 across runs (fb82874189123829d65b6354cccb864a8b7d5897158b9c107bcaaf5ad4887e0a)
 ````
@@ -1811,9 +1811,9 @@ PY
 Exit code 0.
 
 ````text
-/Users/CosmoCloudZhang/Project/ManifoldCloud/data/processed/year1/student_B.parquet: 2,366 science rows, 21 columns, 299,599 bytes
+<repository>/data/processed/year1/student_B.parquet: 2,366 science rows, 21 columns, 299,599 bytes
 Diffsky is incomplete for a Year 1 sample below approximately z = 0.25.
-/Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/synthetic-data/processed/year1/student_A.parquet: 8 science rows, 21 columns, 6,467 bytes
+<repository>/.venv/tmp/synthetic-data/processed/year1/student_A.parquet: 8 science rows, 21 columns, 6,467 bytes
 student_B.parquet: pandas.read_parquet found 2,366 expected rows and 21 columns; 299,599 bytes; SHA-256 verified (real Diffsky pilot)
 student_A.parquet: pandas.read_parquet found 8 expected rows and 21 columns; 6,467 bytes; SHA-256 verified (synthetic Flagship fixture)
 ````
@@ -1821,7 +1821,7 @@ student_A.parquet: pandas.read_parquet found 8 expected rows and 21 columns; 6,4
 #### S13 named student environment
 
 ````bash
-for candidate in /Users/CosmoCloudZhang/Software/minigorge3/envs/umapz/bin/python /Users/CosmoCloudZhang/.conda/envs/umapz/bin/python; do
+for candidate in <conda>/envs/umapz/bin/python ~/.conda/envs/umapz/bin/python; do
   if test -x "$candidate"; then printf 'Found student Python: %s\n' "$candidate"; exit 0; fi
 done
 printf 'No student umapz Python found in the mentor Miniforge or user conda environment directories.\n'
@@ -1865,7 +1865,7 @@ Exit code 0.
 #### S13 clean clone setup
 
 ````bash
-git clone --no-local -- "$PWD" .venv/tmp/manual-clean-check && cd .venv/tmp/manual-clean-check && test -z "$(git status --short)" && git log -1 --oneline && mkdir -p .venv/tmp data && TMPDIR="$PWD/.venv/tmp" /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/bin/python -m venv --system-site-packages .venv
+git clone --no-local -- "$PWD" .venv/tmp/manual-clean-check && cd .venv/tmp/manual-clean-check && test -z "$(git status --short)" && git log -1 --oneline && mkdir -p .venv/tmp data && TMPDIR="$PWD/.venv/tmp" <conda>/envs/CosmoConda/bin/python -m venv --system-site-packages .venv
 ````
 
 Exit code 0.
@@ -1890,20 +1890,20 @@ Collecting pytest==9.2.0
   Downloading pytest-9.2.0-py3-none-any.whl.metadata (7.9 kB)
 Collecting responses==0.26.3
   Downloading responses-0.26.3-py3-none-any.whl.metadata (48 kB)
-Requirement already satisfied: h5py>=3.0.0 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from hdf5plugin==7.1.0) (3.16.0)
+Requirement already satisfied: h5py>=3.0.0 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from hdf5plugin==7.1.0) (3.16.0)
 Collecting iniconfig>=2 (from pytest==9.2.0)
   Downloading iniconfig-2.3.1-py3-none-any.whl.metadata (2.8 kB)
-Requirement already satisfied: packaging>=24 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from pytest==9.2.0) (26.3)
+Requirement already satisfied: packaging>=24 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from pytest==9.2.0) (26.3)
 Collecting pluggy<2,>=1.6 (from pytest==9.2.0)
   Downloading pluggy-1.7.0-py3-none-any.whl.metadata (5.0 kB)
-Requirement already satisfied: pygments>=2.15 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from pytest==9.2.0) (2.21.0)
-Requirement already satisfied: requests<3.0,>=2.30.0 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from responses==0.26.3) (2.34.2)
-Requirement already satisfied: urllib3<3.0,>=1.25.10 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from responses==0.26.3) (2.8.0)
-Requirement already satisfied: pyyaml in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from responses==0.26.3) (6.0.3)
-Requirement already satisfied: numpy>=1.21.2 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from h5py>=3.0.0->hdf5plugin==7.1.0) (2.5.4)
-Requirement already satisfied: charset_normalizer<4,>=2 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses==0.26.3) (3.5.1)
-Requirement already satisfied: idna<4,>=2.5 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses==0.26.3) (3.20)
-Requirement already satisfied: certifi>=2023.5.7 in /Users/CosmoCloudZhang/Software/minigorge3/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses==0.26.3) (2026.10.23)
+Requirement already satisfied: pygments>=2.15 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from pytest==9.2.0) (2.21.0)
+Requirement already satisfied: requests<3.0,>=2.30.0 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from responses==0.26.3) (2.34.2)
+Requirement already satisfied: urllib3<3.0,>=1.25.10 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from responses==0.26.3) (2.8.0)
+Requirement already satisfied: pyyaml in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from responses==0.26.3) (6.0.3)
+Requirement already satisfied: numpy>=1.21.2 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from h5py>=3.0.0->hdf5plugin==7.1.0) (2.5.4)
+Requirement already satisfied: charset_normalizer<4,>=2 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses==0.26.3) (3.5.1)
+Requirement already satisfied: idna<4,>=2.5 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses==0.26.3) (3.20)
+Requirement already satisfied: certifi>=2023.5.7 in <conda>/envs/CosmoConda/lib/python3.12/site-packages (from requests<3.0,>=2.30.0->responses==0.26.3) (2026.10.23)
 Downloading hdf5plugin-7.1.0-py3-none-macosx_11_0_arm64.whl (6.1 MB)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 6.1/6.1 MB 8.5 MB/s eta 0:00:00
 Downloading pytest-9.2.0-py3-none-any.whl (411 kB)
@@ -1971,7 +1971,7 @@ printf 'Clean clone status: no tracked changes or untracked files outside ignore
 Exit code 0.
 
 ````text
-Obtaining file:///Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/manual-clean-check
+Obtaining file://<repository>/.venv/tmp/manual-clean-check
   Checking if build backend supports build_editable: started
   Checking if build backend supports build_editable: finished with status 'done'
   Preparing editable metadata (pyproject.toml): started
@@ -1980,7 +1980,7 @@ Building wheels for collected packages: manifoldcloud
   Building editable for manifoldcloud (pyproject.toml): started
   Building editable for manifoldcloud (pyproject.toml): finished with status 'done'
   Created wheel for manifoldcloud: filename=manifoldcloud-0.1.0-0.editable-py3-none-any.whl size=2824 sha256=b7b3db9d39f229f7b0197a8e1a72d835815157a96287625eb17ced0365d31072
-  Stored in directory: /Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/manual-clean-check/.venv/tmp/pip-ephem-wheel-cache-adho_lip/wheels/8b/57/3d/0ea33dd598f7efa3573de9ca375276411a2a572ab671d68211
+  Stored in directory: <repository>/.venv/tmp/manual-clean-check/.venv/tmp/pip-ephem-wheel-cache-adho_lip/wheels/8b/57/3d/0ea33dd598f7efa3573de9ca375276411a2a572ab671d68211
 Successfully built manifoldcloud
 Installing collected packages: manifoldcloud
 Successfully installed manifoldcloud-0.1.0
@@ -1999,20 +1999,20 @@ speclite 0.20
 HDF5 filter 32026 available: True
 Blosc2 LZ4/bitshuffle round trip: 1024 exact values
 Synthetic downloaded count row: {'n_all': 400, 'n_kind_01': 400, 'n_i265': 400, 'n_i265_kind_01': 400, 'n_i255': 284, 'n_i255_kind_01': 284, 'n_i253': 258, 'n_i253_kind_01': 258, 'n_i245': 155, 'n_i245_kind_01': 155, 'n_i241': 103, 'n_i241_kind_01': 103}
-Open catalogue 353 in CosmoHub and paste /Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/manual-clean-check/data/raw/flagship2/mirror_843/count_query.sql into Expert Mode.
+Open catalogue 353 in CosmoHub and paste <repository>/.venv/tmp/manual-clean-check/data/raw/flagship2/mirror_843/count_query.sql into Expert Mode.
 Submit the query in Parquet format and download the result when it succeeds.
 Ingest the file with `python scripts/fetch_flagship.py --mode manual --count --input /path/to/result.parquet`.
-Open catalogue 353 in CosmoHub and paste /Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/manual-clean-check/data/raw/flagship2/mirror_843/query.sql into Expert Mode.
+Open catalogue 353 in CosmoHub and paste <repository>/.venv/tmp/manual-clean-check/data/raw/flagship2/mirror_843/query.sql into Expert Mode.
 Submit the query in Parquet format and download the result when it succeeds.
 Ingest the file with `python scripts/fetch_flagship.py --mode manual --input /path/to/result.parquet`.
-Saved 1 rows to /Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/manual-clean-check/data/raw/flagship2/mirror_843/counts.parquet
-Saved 400 rows to /Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/manual-clean-check/data/raw/flagship2/mirror_843/flagship.parquet
+Saved 1 rows to <repository>/.venv/tmp/manual-clean-check/data/raw/flagship2/mirror_843/counts.parquet
+Saved 400 rows to <repository>/.venv/tmp/manual-clean-check/data/raw/flagship2/mirror_843/flagship.parquet
 A flagship2_mirror_843.parquet: 400 exact-schema finite rows; 400 flux or disk-axis round trips
 A median a_hl at 23.5 < i < 24.5: 0.354789 arcsec
 Catalogue A, seed 42: {'rows': 400, 'science_rows': 105, 'control_rows': 103, 'i_error_rows': 25, 'median_i_error': 0.13366679847240448, 'science_true_i_gt_25_5_rows': 0, 'science_true_i_gt_25_5_fraction': 0.0, 'science_true_i_gt_cut_rows': 8, 'science_true_i_gt_cut_fraction': 0.0761904761904762, 'i_limit': 24.1}
-Wrote /Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/manual-clean-check/data/processed/year1/A.parquet
-Wrote /Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/manual-clean-check/data/processed/year1/summary.json
-/Users/CosmoCloudZhang/Project/ManifoldCloud/.venv/tmp/manual-clean-check/data/processed/year1/student_A.parquet: 8 science rows, 21 columns, 6,467 bytes
+Wrote <repository>/.venv/tmp/manual-clean-check/data/processed/year1/A.parquet
+Wrote <repository>/.venv/tmp/manual-clean-check/data/processed/year1/summary.json
+<repository>/.venv/tmp/manual-clean-check/data/processed/year1/student_A.parquet: 8 science rows, 21 columns, 6,467 bytes
 Clean clone retained its own package and wrote 8 synthetic student rows with 21 columns
 Clean clone status: no tracked changes or untracked files outside ignored paths
 ````
@@ -2054,7 +2054,7 @@ Exit code 0.
 ````text
 ============================= test session starts ==============================
 platform darwin -- Python 3.12.16, pytest-9.2.0, pluggy-1.7.0
-rootdir: /Users/CosmoCloudZhang/Project/ManifoldCloud
+rootdir: <repository>
 configfile: pyproject.toml
 plugins: platformdirs-4.14.5, anyio-4.16.0
 collected 58 items / 2 deselected / 56 selected
