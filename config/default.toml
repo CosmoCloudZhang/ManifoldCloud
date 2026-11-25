@@ -1,0 +1,43 @@
+[diffsky]
+catalogue = "c260710_09_02_2026"
+location = "https://g-45a93.fd635.8443.data.globus.org/Diffsky/synthetic_galaxies/c260710_09_02_2026/"
+steps = [97, 100, 102, 105, 107, 110, 113, 116, 119, 121, 124, 127, 131, 134, 137, 141, 144, 148, 151, 155, 159, 163, 167, 171, 176, 180, 184, 189, 194, 198, 203, 208, 213, 219, 224, 230, 235, 241, 247, 253, 259, 266, 272, 279, 286, 293, 300, 307, 315, 323, 331, 338, 347, 355, 365, 373, 382, 392, 401, 411, 421, 432, 442, 453, 464, 475, 487]
+pilot_steps = [487, 442, 392, 300]
+patch = 843
+area_deg2 = 34.3774
+h0 = 67.66
+omega_m = 0.3096446816
+columns = [
+  "gal_id", "lc_patch", "central", "ra", "dec", "redshift_true", "redshift_obs",
+  "lsst_u_unlensed", "lsst_g_unlensed", "lsst_r_unlensed", "lsst_i_unlensed", "lsst_z_unlensed", "lsst_y_unlensed",
+  "lsst_i_bulge_unlensed", "lsst_i_disk_unlensed", "lsst_i_knots_unlensed",
+  "r50_disk_2d", "r50_bulge_2d", "alpha_disk", "beta_disk", "alpha_bulge", "beta_bulge",
+  "p_merge", "bulge_to_total", "logsm_obs", "logssfr_obs", "logmp_obs",
+]
+
+[flagship]
+catalogue = 353
+table = "euclid_fs2_mock_dr_v1_1_phz"
+h = 0.67
+columns = [
+  "galaxy_id", "halo_id", "kind", "random_index", "ra_gal", "dec_gal",
+  "true_redshift_gal", "observed_redshift_gal",
+  "lsst_u_el_model3_ext", "lsst_g_el_model3_ext", "lsst_r_el_model3_ext", "lsst_i_el_model3_ext", "lsst_z_el_model3_ext", "lsst_y_el_model3_ext",
+  "dominant_shape", "bulge_fraction", "bulge_r50", "disk_r50", "bulge_axis_ratio", "disk_axis_ratio", "bulge_nsersic", "inclination_angle",
+  "log_stellar_mass", "log_sfr", "color_kind", "euclid_nisp_h",
+]
+
+[flagship.box]
+ra_min = 226.66667
+ra_max = 233.33333
+dec_min = 23.16209
+dec_max = 28.90335
+
+[cuts]
+preselection_i = 26.5
+year1_i = 24.1
+student_fraction = 0.02
+
+[seeds]
+noise_a = 42
+noise_b = 43

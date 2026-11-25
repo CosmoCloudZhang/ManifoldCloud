@@ -1,0 +1,6 @@
+# Copy this file to config/local.toml and edit the path for this machine.
+data_root = "/Volumes/Catalogues/ManifoldCloud"
+
+# A local Diffsky directory can replace the public HTTPS location.
+# [diffsky]
+# location = "/path/to/Diffsky/c260710_09_02_2026"

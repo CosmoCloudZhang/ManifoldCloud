@@ -6,3 +6,4 @@
 - The overnight prompt uses a repository virtual environment with the mentor's installed packages, limits live acquisition to the four-shell Diffsky pilot, defers S08, S09 and full S05, and sets the overnight data root to the ignored `data/` directory.
 - S00 uses the mentor environment's existing build tooling for editable installation to avoid downloading build dependencies outside the package allow-list.
 - S01 used approved outbound access to PyPI after the restricted sandbox could not resolve the package index. The three requested distributions resolved pytest's required dependencies `iniconfig` and `pluggy` inside `.venv`. The mentor conda environment was unchanged.
+- S02 uses noise seeds 42 and 43 for Flagship and Diffsky, respectively, and a student subset fraction of 0.02. These are configurable defaults for reproducible runs and can be revised after the mentor measures the final files.
