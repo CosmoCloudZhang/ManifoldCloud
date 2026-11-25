@@ -9,10 +9,10 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from manifoldcloud.config import load, resolve_data_root
-from manifoldcloud.harmonise import BANDS, HARMONISED_SCHEMA
-from manifoldcloud.noise import NoiseSummary, add_noise, check_noise, make_noise_model
-from manifoldcloud.provenance import atomic_path, record_file, write_json
+from manifoldcloud.core.config import load, resolve_data_root
+from manifoldcloud.catalogue.harmonise import BANDS, HARMONISED_SCHEMA
+from manifoldcloud.catalogue.noise import NoiseSummary, add_noise, check_noise, make_noise_model
+from manifoldcloud.core.provenance import atomic_path, record_file, write_json
 
 YEAR1_SCHEMA = pa.schema(
     [*HARMONISED_SCHEMA,

@@ -10,10 +10,11 @@ import pandas as pd
 import pytest
 import responses
 
-from manifoldcloud.config import load
-from manifoldcloud.cosmohub import CosmoHubClient, CosmoHubError
-from manifoldcloud.provenance import verified_entry
-from scripts.fetch_flagship import main
+from manifoldcloud.core.config import load
+from manifoldcloud.acquisition.cosmohub import CosmoHubClient, CosmoHubError
+from manifoldcloud.core.provenance import verified_entry
+from manifoldcloud.acquisition import fetch_flagship
+from manifoldcloud.acquisition.fetch_flagship import main
 
 
 API = "https://api.cosmohub.pic.es"
@@ -203,3 +204,63 @@ def test_check_only_verifies_requested_columns(tmp_path, missing):
         main(args, environ=ENV.copy())
         raw = tmp_path / "raw" / "flagship2" / "mirror_843"
         assert json.loads((raw / "catalog_metadata.json").read_text()) == metadata
+
+
+def _ingest(tmp_path, data, catalogue, count_row):
+    config = load()
+    cuts = [f"n_i{int(round(cut * 10))}" for cut in fetch_flagship.COUNT_CUTS]
+    counts = {name: [0] for name in ["n_all", "n_kind_01", *cuts, *(f"{cut}_kind_01" for cut in cuts)]}
+    counts.update({name: [value] for name, value in count_row.items()})
+    for name, table, option in (("counts", pd.DataFrame(counts), ["--count"]), ("rows", catalogue, [])):
+        path = tmp_path / f"{name}.parquet"
+        table.to_parquet(path, index=False)
+        main(["--mode", "manual", "--data-root", str(data), *option, "--input", str(path)], environ=ENV.copy())
+    return config
+
+
+def test_verify_compares_rows_with_the_count_query_offline(tmp_path, flagship_parquet, monkeypatch, capsys):
+    _, row = flagship_parquet
+    row["kind"] = 0
+    catalogue = pd.concat([row] * 4, ignore_index=True)
+    catalogue["lsst_i_el_model3_ext"] = [1e-29, 1e-29, 1e-29, 3e-30]   # i = 23.9, 23.9, 23.9, 25.2
+    data = tmp_path / "data"
+    data.mkdir()
+    config = _ingest(tmp_path, data, catalogue, {"n_i265_kind_01": 4})
+    monkeypatch.setattr(fetch_flagship, "REFERENCE_DENSITY", 4 / config.diffsky.area_deg2)
+    main(["--verify", "--data-root", str(data)])
+    assert "Flagship acquisition verified." in capsys.readouterr().out
+    result = fetch_flagship.verify(config, fetch_flagship.flagship_folder(data))
+    assert result["rows"] == result["bright_rows"] == 4
+    assert 25.1 < result["faintest_i"] < 25.3
+
+    monkeypatch.setattr(fetch_flagship, "REFERENCE_DENSITY", 2 * 4 / config.diffsky.area_deg2)
+    with pytest.raises(ValueError, match="density differs from the reference by more than 10%"):
+        fetch_flagship.verify(config, fetch_flagship.flagship_folder(data))
+    assert not responses.calls
+
+
+@pytest.mark.parametrize("change, message", [
+    ({"count": 5}, "count query found 5"),
+    ({"ra_gal": 240.0}, "outside the mirror box"),
+    ({"kind": 2}, "not galaxies"),
+    ({"lsst_i_el_model3_ext": 1e-31}, "fail noiseless i < 26.5"),
+    ({"lsst_i_el_model3_ext": 0.0}, "without a positive i-band flux"),
+])
+def test_verify_names_the_failed_check(tmp_path, flagship_parquet, change, message):
+    _, row = flagship_parquet
+    row["kind"] = 0
+    catalogue = pd.concat([row] * 2, ignore_index=True)
+    for column, value in change.items():
+        if column != "count":
+            catalogue.loc[1, column] = value
+    data = tmp_path / "data"
+    data.mkdir()
+    config = _ingest(tmp_path, data, catalogue, {"n_i265_kind_01": change.get("count", 2)})
+    with pytest.raises(ValueError, match=message):
+        fetch_flagship.verify(config, fetch_flagship.flagship_folder(data))
+
+
+def test_verify_requires_untouched_files(tmp_path):
+    with pytest.raises(SystemExit) as error:
+        main(["--verify", "--data-root", str(tmp_path)])
+    assert error.value.code == 1

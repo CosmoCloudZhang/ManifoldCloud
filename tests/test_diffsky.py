@@ -7,7 +7,7 @@ import hdf5plugin
 import numpy as np
 import pytest
 
-from manifoldcloud.diffsky import TransferBudget, open_shell, read_columns, shell_info
+from manifoldcloud.acquisition.diffsky import TransferBudget, open_shell, read_columns, shell_info
 
 
 CATALOGUE = "c260710_09_02_2026"

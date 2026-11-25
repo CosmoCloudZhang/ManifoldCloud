@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pyarrow as pa
 
-from manifoldcloud.sizes import SIZE_RULE, bulge_flux_fraction, combine_axes, diffsky_axes
+from manifoldcloud.catalogue.sizes import SIZE_RULE, bulge_flux_fraction, combine_axes, diffsky_axes
 
 
 BANDS = tuple("ugrizy")

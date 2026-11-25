@@ -1,0 +1,124 @@
+{
+  "files": {
+    "colours.png": {
+      "command": "python scripts/validate.py --catalogue B --steps 487,442,392,300",
+      "package_versions": {
+        "aiohttp": "3.14.5",
+        "astropy": "8.0.3",
+        "fsspec": "2026.9.0",
+        "h5py": "3.16.0",
+        "hdf5plugin": "7.1.0",
+        "manifoldcloud": "0.2.0",
+        "matplotlib": "3.11.2",
+        "numpy": "2.5.5",
+        "pandas": "3.1.1",
+        "photerr": "1.6.0",
+        "pyarrow": "26.0.1",
+        "python": "3.12.16",
+        "requests": "2.34.2",
+        "speclite": "0.20"
+      },
+      "row_count": 257982,
+      "sha256": "3193ae1381ffd0bc783b5b0e295dfa51b630713ec5117169eb04c9f2017a538b",
+      "source": [
+        "../../data/interim/harmonised/diffsky_843/shell_487.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_442.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_392.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_300.parquet",
+        "../../data/raw/diffsky/c260710_09_02_2026/manifest.json",
+        "../../data/raw/diffsky/c260710_09_02_2026/diffsky_c260710_09_02_2026_transmission_curves.hdf5"
+      ],
+      "utc_time": "2026-11-25T15:47:09.796497+00:00"
+    },
+    "number_counts.png": {
+      "command": "python scripts/validate.py --catalogue B --steps 487,442,392,300",
+      "package_versions": {
+        "aiohttp": "3.14.5",
+        "astropy": "8.0.3",
+        "fsspec": "2026.9.0",
+        "h5py": "3.16.0",
+        "hdf5plugin": "7.1.0",
+        "manifoldcloud": "0.2.0",
+        "matplotlib": "3.11.2",
+        "numpy": "2.5.5",
+        "pandas": "3.1.1",
+        "photerr": "1.6.0",
+        "pyarrow": "26.0.1",
+        "python": "3.12.16",
+        "requests": "2.34.2",
+        "speclite": "0.20"
+      },
+      "row_count": 257982,
+      "sha256": "a799245155c718e1ee3ce8634d825c8d4216d09deef6df54a912b49af5c69a3c",
+      "source": [
+        "../../data/interim/harmonised/diffsky_843/shell_487.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_442.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_392.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_300.parquet",
+        "../../data/raw/diffsky/c260710_09_02_2026/manifest.json",
+        "../../data/raw/diffsky/c260710_09_02_2026/diffsky_c260710_09_02_2026_transmission_curves.hdf5"
+      ],
+      "utc_time": "2026-11-25T15:47:09.792984+00:00"
+    },
+    "redshift_distribution.png": {
+      "command": "python scripts/validate.py --catalogue B --steps 487,442,392,300",
+      "package_versions": {
+        "aiohttp": "3.14.5",
+        "astropy": "8.0.3",
+        "fsspec": "2026.9.0",
+        "h5py": "3.16.0",
+        "hdf5plugin": "7.1.0",
+        "manifoldcloud": "0.2.0",
+        "matplotlib": "3.11.2",
+        "numpy": "2.5.5",
+        "pandas": "3.1.1",
+        "photerr": "1.6.0",
+        "pyarrow": "26.0.1",
+        "python": "3.12.16",
+        "requests": "2.34.2",
+        "speclite": "0.20"
+      },
+      "row_count": 257982,
+      "sha256": "1a1f79e2aef05848db6df97282808eb48f20ffb9786d6b68f722107ab7b38c25",
+      "source": [
+        "../../data/interim/harmonised/diffsky_843/shell_487.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_442.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_392.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_300.parquet",
+        "../../data/raw/diffsky/c260710_09_02_2026/manifest.json",
+        "../../data/raw/diffsky/c260710_09_02_2026/diffsky_c260710_09_02_2026_transmission_curves.hdf5"
+      ],
+      "utc_time": "2026-11-25T15:47:09.794521+00:00"
+    },
+    "sizes.png": {
+      "command": "python scripts/validate.py --catalogue B --steps 487,442,392,300",
+      "package_versions": {
+        "aiohttp": "3.14.5",
+        "astropy": "8.0.3",
+        "fsspec": "2026.9.0",
+        "h5py": "3.16.0",
+        "hdf5plugin": "7.1.0",
+        "manifoldcloud": "0.2.0",
+        "matplotlib": "3.11.2",
+        "numpy": "2.5.5",
+        "pandas": "3.1.1",
+        "photerr": "1.6.0",
+        "pyarrow": "26.0.1",
+        "python": "3.12.16",
+        "requests": "2.34.2",
+        "speclite": "0.20"
+      },
+      "row_count": 257982,
+      "sha256": "75105caaabc741dead7a8dae53528e68b5ffb860c4982b50c0f8c68dc4f7287c",
+      "source": [
+        "../../data/interim/harmonised/diffsky_843/shell_487.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_442.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_392.parquet",
+        "../../data/interim/harmonised/diffsky_843/shell_300.parquet",
+        "../../data/raw/diffsky/c260710_09_02_2026/manifest.json",
+        "../../data/raw/diffsky/c260710_09_02_2026/diffsky_c260710_09_02_2026_transmission_curves.hdf5"
+      ],
+      "utc_time": "2026-11-25T15:47:09.795526+00:00"
+    }
+  }
+}

@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from speclite.filters import load_filters
 
-from manifoldcloud.validate import compare_filter_curves
+from manifoldcloud.catalogue.validate import compare_filter_curves
 
 
 @pytest.fixture

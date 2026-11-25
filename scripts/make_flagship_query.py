@@ -2,9 +2,9 @@
 
 from pathlib import Path
 
-from manifoldcloud.config import load
-from manifoldcloud.flagship import build_count_query, build_data_query
-from manifoldcloud.provenance import write_text
+from manifoldcloud.core.config import load
+from manifoldcloud.acquisition.flagship import build_count_query, build_data_query
+from manifoldcloud.core.provenance import write_text
 
 
 def main():

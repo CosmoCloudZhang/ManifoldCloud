@@ -6,7 +6,7 @@ from urllib.parse import urljoin, urlsplit
 
 import requests
 
-from manifoldcloud.provenance import atomic_path
+from manifoldcloud.core.provenance import atomic_path
 
 API_ORIGIN = "https://api.cosmohub.pic.es"
 API_HOST = "api.cosmohub.pic.es"

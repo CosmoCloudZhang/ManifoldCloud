@@ -5,11 +5,10 @@ from pathlib import Path
 import shlex
 import sys
 
-from manifoldcloud.config import load, resolve_data_root
-from manifoldcloud.provenance import atomic_path, load_manifest, record_file, write_json
-from manifoldcloud.validate import COLOURS, compare_filter_curves, diffsky_depth, summarise_catalogue
+from manifoldcloud.core.config import OUTPUTS, load, resolve_data_root
+from manifoldcloud.core.provenance import atomic_path, load_manifest, record_file, write_json
+from manifoldcloud.catalogue.validate import COLOURS, compare_filter_curves, diffsky_depth, summarise_catalogue
 
-REPOSITORY = Path(__file__).resolve().parents[1]
 DIFFSKY_CAVEAT = "Diffsky is incomplete for a Year 1 sample below approximately z = 0.25."
 PALETTE = {"A": "#26669c", "B": "#a6482d"}
 LABELS = {"A": "Flagship 2", "B": "Diffsky"}
@@ -119,8 +118,8 @@ def main():
             for band, metrics in summary["diffsky_filter_curves"].items():
                 print(f"Diffsky {band} vs speclite lsst2023: maximum difference "
                       f"{metrics['max_absolute_difference']:.3g} ({metrics['samples']:,} samples)")
-        figure_paths = _plot(summary, REPOSITORY / "figures" / "data_validation")
-        report = REPOSITORY / "report" / "data_validation_summary.json"
+        figure_paths = _plot(summary, OUTPUTS / "figures" / "data_validation")
+        report = OUTPUTS / "tables" / "data_validation_summary.json"
         write_json(report, summary)
         row_count = sum(catalogue["rows"] for catalogue in summary["catalogues"].values())
         inputs = [str(file) for files in paths.values() for file in files]

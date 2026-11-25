@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from manifoldcloud.noise import NoiseSummary, add_noise, check_noise, make_noise_model
+from manifoldcloud.catalogue.noise import NoiseSummary, add_noise, check_noise, make_noise_model
 
 
 def _catalogue(magnitudes):

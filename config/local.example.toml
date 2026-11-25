@@ -1,4 +1,5 @@
-# Copy this file to config/local.toml and edit the path for this machine.
+# Optional. Copy this file to config/local.toml to override settings on one machine.
+# Without it, catalogue data go to outputs/data inside the repository.
 data_root = "/Volumes/Catalogues/ManifoldCloud"
 
 # A local Diffsky directory can replace the public HTTPS location.

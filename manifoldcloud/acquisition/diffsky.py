@@ -1,10 +1,16 @@
-"""Read selected columns from local or HTTPS Diffsky HDF5 shells."""
+"""Read selected columns from local or HTTPS Diffsky HDF5 shells.
+
+A shell is several gigabytes, but the columns this project needs are a small
+part of it. Over HTTPS the reader therefore asks only for the byte ranges that
+hold those columns and never downloads a whole shell.
+"""
 
 import asyncio
 from bisect import bisect_right
 from collections import OrderedDict
 from contextlib import contextmanager
 from pathlib import Path
+from shutil import copyfile
 from urllib.parse import urlsplit
 
 import aiohttp
@@ -19,7 +25,9 @@ BLOCK_BYTES = 128 * 1024
 COALESCE_GAP = 64 * 1024
 MAX_RANGE_BYTES = 8 * 1024 * 1024
 CONNECTIONS = 4
-HEADERS = {"User-Agent": "ManifoldCloud/0.1", "Accept-Encoding": "identity"}
+# The HTTP library supplies its own generic User-Agent.
+HEADERS = {"Accept-Encoding": "identity"}
+MAX_SUPPORT_BYTES = 64 * 1024 * 1024
 
 
 class TransferBudget:
@@ -38,9 +46,8 @@ class TransferBudget:
         self.requests += 1
 
 
-def shell_location(location, step):
-    """Return the path or URL of a shell in a catalogue directory."""
-    name = f"lc_cores-{int(step)}.diffsky_gals.hdf5"
+def _resource(location, name):
+    """Return the path or URL of one file in a catalogue directory."""
     location = str(location)
     if "://" not in location:
         return Path(location) / name
@@ -50,6 +57,16 @@ def shell_location(location, step):
     )):
         raise ValueError("Diffsky requires a credential-free HTTPS base URL")
     return f"{location.rstrip('/')}/{name}"
+
+
+def shell_location(location, step):
+    """Return the path or URL of a shell in a catalogue directory."""
+    return _resource(location, f"lc_cores-{int(step)}.diffsky_gals.hdf5")
+
+
+def curves_location(location, catalogue):
+    """Return the path or URL of a catalogue's filter transmission curves."""
+    return _resource(location, f"diffsky_{catalogue}_transmission_curves.hdf5")
 
 
 async def _client(**options):
@@ -91,6 +108,53 @@ def resource_sizes(locations):
     with _filesystem() as (fs, session):
         return [path.stat().st_size if isinstance(path, Path) else sync(fs.loop, _head, session, path)
                 for path in locations]
+
+
+async def _download(session, url, destination, size, budget):
+    for attempt in range(3):
+        budget.reserve(size)
+        try:
+            async with session.get(url, headers=HEADERS, allow_redirects=False) as response:
+                response.raise_for_status()
+                if response.status != 200:
+                    raise OSError(f"Expected a complete Diffsky support file: {url}")
+                received = 0
+                with open(destination, "wb") as file:
+                    async for block in response.content.iter_chunked(1024 * 1024):
+                        received += len(block)
+                        budget.bytes_received += len(block)
+                        if received > size:
+                            raise OSError("Diffsky returned more payload than the reported size")
+                        file.write(block)
+                if received != size:
+                    raise aiohttp.ClientPayloadError("Incomplete Diffsky support file")
+                return size
+        except (aiohttp.ClientError, TimeoutError):
+            if attempt == 2:
+                raise
+            await asyncio.sleep(2 ** attempt)
+
+
+def _check_support_size(size):
+    if size > MAX_SUPPORT_BYTES:
+        raise ValueError(f"Refusing to copy {size:,} bytes as a Diffsky support file")
+
+
+def copy_resource(source, destination, *, budget=None):
+    """Copy one small support file from a local folder or over HTTPS; return its size.
+
+    Shells are never copied this way: anything above MAX_SUPPORT_BYTES is refused.
+    """
+    if isinstance(source, Path):
+        size = source.stat().st_size
+        _check_support_size(size)
+        copyfile(source, destination)
+        return size
+    budget = TransferBudget() if budget is None else budget
+    with _filesystem() as (fs, session):
+        size = sync(fs.loop, _head, session, source)
+        _check_support_size(size)
+        return sync(fs.loop, _download, session, source, destination, size, budget)
 
 
 def _coalesce(ranges):

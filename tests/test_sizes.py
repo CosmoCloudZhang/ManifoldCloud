@@ -4,7 +4,7 @@ from astropy.cosmology import FlatLambdaCDM
 import numpy as np
 import pytest
 
-from manifoldcloud.sizes import bulge_flux_fraction, combine_axes, diffsky_axes, to_arcsec
+from manifoldcloud.catalogue.sizes import bulge_flux_fraction, combine_axes, diffsky_axes, to_arcsec
 
 COSMOLOGY = FlatLambdaCDM(H0=67.66, Om0=0.3096446816)
 

@@ -10,8 +10,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from manifoldcloud.config import load
-from manifoldcloud.provenance import atomic_path, load_manifest, verified_entry
+from manifoldcloud.acquisition import diffsky, fetch_diffsky
+from manifoldcloud.core.config import load
+from manifoldcloud.core.provenance import atomic_path, load_manifest, verified_entry
 
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "fetch_diffsky.py"
@@ -98,3 +99,53 @@ def test_fetch_filters_rows_and_repairs_a_corrupt_resume(fetch_fixture):
     pd.testing.assert_frame_equal(pd.read_parquet(output), table)
     assert set(load_manifest(manifest)["files"]) == {output.name}
     assert not output.stat().st_mode & 0o222
+
+
+def test_local_transmission_curves_are_published_once(fetch_fixture):
+    source, _, output, command = fetch_fixture
+    name = f"diffsky_{load().diffsky.catalogue}_transmission_curves.hdf5"
+    (source.parent / name).write_bytes(b"filter curves")
+    assert "Transmission curves: 13 bytes" in _run(command)
+    curves = output.with_name(name)
+    assert curves.read_bytes() == b"filter curves"
+    assert not curves.stat().st_mode & 0o222
+    entry = verified_entry(output.with_name("manifest.json"), curves)
+    assert entry["source"].endswith(name) and not entry["source"].startswith("/")
+    assert "Transmission curves: verified existing output" in _run(command)
+
+
+def test_missing_curves_fail_only_when_required(tmp_path):
+    config = load()
+    arguments = (config, tmp_path / "source", tmp_path / "out", "test", diffsky.TransferBudget())
+    assert "skipped" in fetch_diffsky.fetch_curves(*arguments)
+    with pytest.raises(ValueError, match="transmission curves are missing"):
+        fetch_diffsky.fetch_curves(*arguments, required=True)
+
+
+def test_support_copy_refuses_shell_sized_files(tmp_path, monkeypatch):
+    source = tmp_path / "large.hdf5"
+    source.write_bytes(b"0123456789")
+    monkeypatch.setattr(diffsky, "MAX_SUPPORT_BYTES", 5)
+    with pytest.raises(ValueError, match="Refusing to copy 10 bytes"):
+        diffsky.copy_resource(source, tmp_path / "copy.hdf5")
+    assert not (tmp_path / "copy.hdf5").exists()
+
+
+def test_remote_shell_is_retried_and_local_shell_is_not(monkeypatch, capsys):
+    attempts = []
+
+    def flaky(config, location, step, budget):
+        attempts.append(step)
+        if len(attempts) < 3:
+            raise OSError("connection reset")
+        return "table", {"rows_before": 1}
+
+    monkeypatch.setattr(fetch_diffsky, "extract_shell", flaky)
+    monkeypatch.setattr(fetch_diffsky, "RETRY_WAITS", (0, 0))
+    assert fetch_diffsky.extract_with_retries(None, "https://example.org/", 487, None, remote=True)[0] == "table"
+    assert attempts == [487, 487, 487]
+    assert capsys.readouterr().out.count("trying again") == 2
+    attempts.clear()
+    with pytest.raises(OSError, match="connection reset"):
+        fetch_diffsky.extract_with_retries(None, "/local", 487, None, remote=False)
+    assert attempts == [487]

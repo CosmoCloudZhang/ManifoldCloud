@@ -4,7 +4,7 @@ import hashlib
 
 import pytest
 
-from manifoldcloud.provenance import atomic_path, load_manifest, record_file, verified_entry
+from manifoldcloud.core.provenance import atomic_path, command_line, load_manifest, record_file, verified_entry
 
 
 def test_atomic_file_and_manifest(tmp_path):
@@ -40,3 +40,20 @@ def test_write_failure_preserves_previous_file(tmp_path):
             raise RuntimeError("interrupted")
     assert output.read_text() == "original"
     assert list(tmp_path.iterdir()) == [output]
+
+
+def test_manifest_holds_no_machine_paths(tmp_path):
+    folder = tmp_path / "processed"
+    source = tmp_path / "raw" / "shell.parquet"
+    output = folder / "table.parquet"
+    for path, payload in ((source, b"raw"), (output, b"rows")):
+        path.parent.mkdir()
+        path.write_bytes(payload)
+    manifest = folder / "manifest.json"
+    labels = ["https://example.org/shell.hdf5", "CosmoHub catalogue 353"]
+    entry = record_file(manifest, output, source=[source, str(source), *labels],
+                        command=command_line("scripts/harmonise.py", ["--steps", "487"]), row_count=1)
+    assert entry["source"] == ["../raw/shell.parquet", "../raw/shell.parquet", *labels]
+    assert entry["command"] == "python scripts/harmonise.py --steps 487"
+    assert str(tmp_path) not in manifest.read_text()
+    assert list(load_manifest(manifest)["files"]) == ["table.parquet"]

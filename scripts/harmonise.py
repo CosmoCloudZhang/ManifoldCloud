@@ -11,9 +11,9 @@ import numpy as np
 import pyarrow as pa
 import pyarrow.parquet as pq
 
-from manifoldcloud.config import load, resolve_data_root
-from manifoldcloud.harmonise import HARMONISED_SCHEMA, harmonise_diffsky, harmonise_flagship, validate_harmonised
-from manifoldcloud.provenance import atomic_path, record_file
+from manifoldcloud.core.config import load, resolve_data_root
+from manifoldcloud.catalogue.harmonise import HARMONISED_SCHEMA, harmonise_diffsky, harmonise_flagship, validate_harmonised
+from manifoldcloud.core.provenance import atomic_path, record_file
 
 
 def _verify_conversion(raw, table, catalogue):

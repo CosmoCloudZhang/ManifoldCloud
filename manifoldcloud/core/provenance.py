@@ -7,8 +7,11 @@ from functools import cache
 from hashlib import file_digest
 from importlib.metadata import PackageNotFoundError, version
 import json
+import os
 from pathlib import Path
 import platform
+import shlex
+import sys
 from tempfile import NamedTemporaryFile
 
 
@@ -44,11 +47,16 @@ def sha256(path):
         return file_digest(file, "sha256").hexdigest()
 
 
+def command_line(program, arguments=None):
+    """Describe a command by its script in the repository, however it was started."""
+    return shlex.join(["python", program, *(sys.argv[1:] if arguments is None else arguments)])
+
+
 @cache
 def _versions():
     versions = {"python": platform.python_version()}
-    for name in ("manifoldcloud", "numpy", "pandas", "pyarrow", "h5py", "hdf5plugin",
-                 "fsspec", "requests", "astropy", "speclite", "photerr", "matplotlib"):
+    for name in ("manifoldcloud", "numpy", "pandas", "pyarrow", "h5py", "hdf5plugin", "fsspec",
+                 "aiohttp", "requests", "astropy", "speclite", "photerr", "matplotlib"):
         try:
             versions[name] = version(name)
         except PackageNotFoundError:
@@ -68,6 +76,19 @@ def _entry_key(manifest_path, output):
     return str(Path(output).resolve().relative_to(Path(manifest_path).parent.resolve()))
 
 
+def _portable(source, folder):
+    """Express local paths relative to the manifest folder; leave URLs and labels alone.
+
+    A manifest then reads the same on every machine, and a data root can be
+    moved without leaving absolute paths behind.
+    """
+    if isinstance(source, (list, tuple)):
+        return [_portable(item, folder) for item in source]
+    if isinstance(source, Path) or (isinstance(source, str) and os.path.isabs(source)):
+        return Path(os.path.relpath(Path(source).resolve(), folder)).as_posix()
+    return source
+
+
 def verified_entry(manifest_path, output):
     """Return the entry if the output file exists and matches its recorded digest."""
     entry = load_manifest(manifest_path)["files"].get(_entry_key(manifest_path, output))
@@ -82,7 +103,7 @@ def record_file(manifest_path, output, *, source, command, row_count, details=No
     output = Path(output)
     key = _entry_key(manifest_path, output)
     entry = {
-        "source": source,
+        "source": _portable(source, manifest_path.parent.resolve()),
         "command": command,
         "row_count": row_count,
         "package_versions": _versions(),

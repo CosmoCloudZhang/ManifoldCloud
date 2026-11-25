@@ -7,8 +7,8 @@ import pyarrow.parquet as pq
 import pytest
 from astropy.cosmology import FlatLambdaCDM
 
-from manifoldcloud.config import load
-from manifoldcloud.harmonise import (
+from manifoldcloud.core.config import load
+from manifoldcloud.catalogue.harmonise import (
     HARMONISED_SCHEMA, harmonise_diffsky, harmonise_flagship, validate_harmonised,
 )
 

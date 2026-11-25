@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from manifoldcloud.validate import diffsky_depth, summarise_catalogue
+from manifoldcloud.catalogue.validate import diffsky_depth, summarise_catalogue
 
 
 @pytest.fixture

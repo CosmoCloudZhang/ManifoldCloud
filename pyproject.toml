@@ -1,16 +1,31 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "manifoldcloud"
-version = "0.1.0"
-description = "Prepare and validate galaxy catalogues for the ManifoldCloud project"
+version = "0.2.0"
+description = "Acquire the galaxy catalogues for the ManifoldCloud photometric-redshift project"
+readme = "README.md"
+license = "MIT"
 requires-python = ">=3.12"
+# The acquisition code needs these. environment.yml is the full recipe and
+# installs them from conda-forge before this package.
+dependencies = [
+    "aiohttp",
+    "fsspec",
+    "h5py",
+    "hdf5plugin",
+    "numpy",
+    "pandas",
+    "pyarrow",
+    "requests",
+]
 
 [tool.setuptools.packages.find]
-include = ["manifoldcloud"]
+include = ["manifoldcloud*"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 markers = ["network: optional live Diffsky checks"]
 addopts = "-m 'not network'"

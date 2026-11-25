@@ -3,7 +3,7 @@
 import numpy as np
 from photerr import LsstErrorModel
 
-from manifoldcloud.harmonise import BANDS, MAG_COLUMNS
+from manifoldcloud.catalogue.harmonise import BANDS, MAG_COLUMNS
 
 
 def make_noise_model():

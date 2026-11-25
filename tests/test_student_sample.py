@@ -10,8 +10,8 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 import pytest
 
-from manifoldcloud.config import load
-from manifoldcloud.provenance import verified_entry
+from manifoldcloud.core.config import load
+from manifoldcloud.core.provenance import verified_entry
 from scripts.make_year1_sample import STUDENT_COLUMNS, YEAR1_SCHEMA, select_student_sample
 
 

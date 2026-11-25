@@ -8,7 +8,7 @@ import sqlite3
 import tomllib
 from types import SimpleNamespace
 
-from manifoldcloud.flagship import build_count_query, build_data_query
+from manifoldcloud.acquisition.flagship import build_count_query, build_data_query
 
 
 ROOT = Path(__file__).resolve().parents[1]

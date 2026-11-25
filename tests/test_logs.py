@@ -4,7 +4,7 @@ import io
 import logging
 import unittest
 
-from manifoldcloud.logs import RedactionFilter
+from manifoldcloud.core.logs import RedactionFilter
 
 
 class LoggingTests(unittest.TestCase):
