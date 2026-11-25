@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "manifoldcloud"
+version = "0.1.0"
+description = "Prepare and validate galaxy catalogues for the ManifoldCloud project"
+requires-python = ">=3.12"
+
+[tool.setuptools.packages.find]
+include = ["manifoldcloud"]
+
+[tool.pytest.ini_options]
+markers = ["network: optional live Diffsky checks"]
+addopts = "-m 'not network'"

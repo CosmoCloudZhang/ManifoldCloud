@@ -1,0 +1,13 @@
+.DS_Store
+__pycache__/
+.ipynb_checkpoints/
+.pytest_cache/
+.venv/
+*.egg-info/
+*.part
+.env*
+config/local.toml
+data/
+*.parquet
+*.hdf5
+*.fits
