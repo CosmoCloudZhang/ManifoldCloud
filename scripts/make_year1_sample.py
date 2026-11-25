@@ -1,4 +1,4 @@
-"""Apply seeded Rubin Year 1 photometric noise and flag the two samples."""
+"""Apply Rubin Year 1 photometric noise and select the student science sample."""
 
 import argparse
 from pathlib import Path
@@ -20,6 +20,14 @@ YEAR1_SCHEMA = pa.schema(
      ("sample", pa.bool_()), ("control_sample", pa.bool_())],
     metadata={**HARMONISED_SCHEMA.metadata, b"photometric_model": b"photerr.LsstErrorModel (Rubin Year 1)"},
 )
+STUDENT_COLUMNS = (
+    "gal_id", "ra", "dec", "z_true", "z_obs", "mag_i",
+    *(f"mag_{band}_{suffix}" for band in BANDS for suffix in ("obs", "err")),
+    "a_hl", "b_hl", "random_index",
+)
+STUDENT_SCHEMA = pa.schema([YEAR1_SCHEMA.field(column) for column in STUDENT_COLUMNS],
+                           metadata=YEAR1_SCHEMA.metadata)
+MAX_STUDENT_BYTES = 200_000_000
 DIFFSKY_CAVEAT = "Diffsky is incomplete for a Year 1 sample below approximately z = 0.25."
 
 
@@ -57,12 +65,40 @@ def _make_sample(paths, output, seed, i_limit, catalogue):
     return {"seed": seed, **summary}
 
 
+def select_student_sample(table, *, fraction):
+    """Select science rows with random index strictly below the configured fraction."""
+    if not 0 <= fraction <= 1:
+        raise ValueError("The student fraction must be between zero and one")
+    keep = table["sample"] & table["random_index"].lt(fraction)
+    return table.loc[keep, list(STUDENT_COLUMNS)]
+
+
+def _make_student_file(source, output, fraction):
+    rows = 0
+    with atomic_path(output) as part:
+        inputs = pq.ParquetFile(source).iter_batches(batch_size=250_000, columns=[*STUDENT_COLUMNS, "sample"])
+        with pq.ParquetWriter(part, STUDENT_SCHEMA) as writer:
+            for batch in inputs:
+                table = select_student_sample(batch.to_pandas(), fraction=fraction)
+                writer.write_table(pa.Table.from_pandas(table, schema=STUDENT_SCHEMA, preserve_index=False))
+                rows += len(table)
+        size = part.stat().st_size
+        if size >= MAX_STUDENT_BYTES:
+            raise ValueError(f"{output.name} is {size:,} bytes. Reduce cuts.student_fraction to stay below 200 MB.")
+        if pq.ParquetFile(part).metadata.num_rows != rows:
+            raise ValueError(f"{output.name} has an inconsistent row count")
+    return rows, size
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path)
     parser.add_argument("--catalogue", choices=("A", "B", "both"), default="both")
     parser.add_argument("--steps", help="Comma-separated Diffsky steps to process")
+    parser.add_argument("--student-only", action="store_true", help="Select student rows from existing Year 1 files")
     args = parser.parse_args()
+    if args.student_only and args.steps:
+        parser.error("Select the Diffsky steps when creating the Year 1 input to --student-only")
     config = load()
     try:
         root = resolve_data_root(args.data_root, config)
@@ -70,6 +106,18 @@ def main():
         output = root / "processed" / "year1"
         command = shlex.join(["python", *sys.argv])
         catalogues = ("A", "B") if args.catalogue == "both" else (args.catalogue,)
+        if args.student_only:
+            for catalogue in catalogues:
+                source = output / f"{catalogue}.parquet"
+                path = output / f"student_{catalogue}.parquet"
+                fraction = config.cuts.student_fraction
+                rows, size = _make_student_file(source, path, fraction)
+                record_file(output / "manifest.json", path, source=str(source), command=command,
+                            row_count=rows, details={"student_fraction": fraction})
+                print(f"{path}: {rows:,} science rows, {len(STUDENT_COLUMNS)} columns, {size:,} bytes")
+                if catalogue == "B":
+                    print(DIFFSKY_CAVEAT)
+            return
         summary = {"catalogues": {}}
         sources = []
         for catalogue in catalogues:
