@@ -1,13 +1,63 @@
+# Patterns starting with "/" apply at the repository root only.
+
+# --- macOS and editors ----------------------------------------------------
 .DS_Store
+._*
+.vscode/
+.idea/
+*.swp
+
+# --- Python caches and build products -------------------------------------
 __pycache__/
-.ipynb_checkpoints/
-.pytest_cache/
-.venv/
+*.py[cod]
 *.egg-info/
-*.part
-.env*
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Jupyter --------------------------------------------------------------
+.ipynb_checkpoints/
+
+# --- Environments, secrets and per-machine settings -----------------------
+.venv/
+venv/
+.env
+.env.*
 config/local.toml
-data/
+
+# --- Catalogue data and other large products ------------------------------
+# Catalogue files are never committed. Small figures and tables under
+# outputs/figures and outputs/tables stay tracked.
+/outputs/data/
+/data/
 *.parquet
 *.hdf5
+*.h5
 *.fits
+*.fits.gz
+*.npy
+*.npz
+*.pkl
+*.joblib
+*.part
+*.log
+
+# --- Teaching material and office files -----------------------------------
+# Lecture material is kept outside this repository.
+/lectures/
+~$*
+node_modules/
+
+# --- LaTeX build products in report/ --------------------------------------
+report/**/*.aux
+report/**/*.bbl
+report/**/*.blg
+report/**/*.fdb_latexmk
+report/**/*.fls
+report/**/*.out
+report/**/*.synctex.gz
+report/**/*.toc

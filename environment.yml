@@ -1,51 +1,60 @@
-# CosmoConda: mentor environment for the UMAPZ project
+# ManifoldConda: the single environment for the ManifoldCloud project (macOS).
+#
+# Run these from the repository root. The last line of this file installs the
+# manifoldcloud package from this folder, so the folder must stay in place.
 #
 # Create:   conda env create -f environment.yml
-# Activate: conda activate CosmoConda        (the name is case-sensitive)
-# Check:    python lectures/lecture04/output/check_environment.py
-# Update:   conda env update -n CosmoConda -f environment.yml --prune
+# Activate: conda activate ManifoldConda        (the name is case-sensitive)
+# Check:    python scripts/check_environment.py
+# Update:   conda env update -n ManifoldConda -f environment.yml --prune
 #
-# The core block is the student's recipe (lectures/lecture04/output/environment.yml)
-# unchanged, so anything prepared here runs in the student's `umapz` as well.
-# Keep the two blocks in step when either file is edited.
-name: CosmoConda
+# Versions are pinned to the minor release so that a later install matches the
+# one used to acquire the data. Add a package here, never with a bare
+# `conda install` or `pip install`, so every copy of the environment agrees.
+name: ManifoldConda
 channels:
   - conda-forge
 dependencies:
   - python=3.12
-  # --- core: identical to the student's umapz -----------------------------
-  - numpy
-  - scipy
-  - pandas
+  # --- numerics, tables and plots ------------------------------------------
+  - numpy=2.5
+  - scipy=1.18
+  - pandas=3.1
+  - astropy=8.0          # FITS tables, units, cosmology
   - matplotlib
-  - astropy          # FITS tables, units, cosmology
-  - h5py             # HDF5 catalogues (pop-cosmos)
-  - pyarrow          # Parquet catalogues (CosmoHub, OpenUniverse); reads S3 too
-  - scikit-learn     # PCA, k-means, scaling, splits
-  - umap-learn       # UMAP (pulls in numba and pynndescent)
-  - opentsne         # t-SNE that can place new points on a frozen map
-  - minisom          # pure-Python SOM
-  - somoclu          # fast C++ SOM
+  # --- catalogue files -------------------------------------------------------
+  - h5py=3.16            # Diffsky HDF5 shells
+  - hdf5plugin=7.1       # Blosc2 filter used by the Diffsky files
+  - pyarrow=26           # Parquet tables
+  - python-duckdb=2.0    # summaries of large Parquet files without loading them
+  # --- remote access ---------------------------------------------------------
+  - fsspec               # HTTP byte ranges for the Diffsky shells
+  - aiohttp
+  - requests             # CosmoHub
+  # --- photometry ------------------------------------------------------------
+  - speclite=0.20        # Rubin filter curves
+  # --- manifold learning -----------------------------------------------------
+  - scikit-learn=1.9     # PCA, k-means, scaling, splits
+  - umap-learn=0.6       # UMAP
+  - numba=0.68           # compiled by umap-learn; pinned because it affects results
+  - opentsne=1.0         # t-SNE that can place new points on a frozen map
+  - minisom=2.3          # pure-Python SOM
+  - somoclu=1.7          # fast C++ SOM, required by RAIL's SOM stages
+  # --- RAIL: photometric-redshift tools from LSST DESC -----------------------
+  - pz-rail-base=2.0     # stages, tomographic binning, metrics
+  - qp-prob=1.1          # redshift distributions as ensembles
+  - tables-io=1.1        # table reading and writing used by RAIL
+  # --- notebooks -------------------------------------------------------------
   - jupyterlab
   - ipykernel
   - ipywidgets
   - tqdm
-  # --- mentor layer: catalogue preparation and extensions -----------------
-  - healpy           # HEALPix pixel lookup for the Roman-Rubin files (nside 32)
-  - speclite         # filter curves, for photon-flux to AB zero-points
-  - python-duckdb    # trim the 34 GB Flagship 2 cut without loading it
-  - pot              # optimal transport, tier 2 colour matching (import ot)
-  - hdf5plugin       # Blosc2 support for Diffsky HDF5 files
-  - requests         # HTTP access to catalogue services
-  - pytest           # pipeline test runner
-  - responses        # mock catalogue HTTP calls in tests
-  # --- pip-only -------------------------------------------------------------
+  # --- tests -----------------------------------------------------------------
+  - pytest
+  - responses            # mocked HTTP in tests
+  # --- PyPI only -------------------------------------------------------------
   - pip
   - pip:
-      - photerr      # Rubin/Euclid/Roman noise model; PyPI is ahead of conda-forge
-#
-# Deliberately not here (see the project plan, section 2.1):
-#   opencosmo        pins astropy < 8 and numpy < 2.5; give it its own environment
-#   pytorch, zuko    tier 3 only, decided at Phase III
-#   pz-rail-base, tables-io, then `pip install --no-deps pz-rail-som`
-#                    optional RAIL cross-check, not needed before Class 9
+      - photerr==1.6.0       # Rubin noise model; conda-forge is one release behind
+      - pz-rail-som==2.0.1   # RAIL SOM informer and summarizer
+      - -e .                 # this repository's manifoldcloud package
