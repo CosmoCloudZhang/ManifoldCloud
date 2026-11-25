@@ -29,7 +29,16 @@ def _origin(url):
         parsed = urlsplit(url)
         if (parsed.scheme == "https" and parsed.hostname and parsed.username is None
                 and parsed.password is None and not parsed.fragment):
-            return parsed.hostname, parsed.port or 443
+            port = parsed.port
+            return parsed.hostname, 443 if port is None else port
+    except (TypeError, ValueError):
+        pass
+    raise CosmoHubError("CosmoHub supplied an invalid HTTPS result URL")
+
+
+def _join_url(base, location):
+    try:
+        return urljoin(base, location)
     except (TypeError, ValueError):
         pass
     raise CosmoHubError("CosmoHub supplied an invalid HTTPS result URL")
@@ -107,11 +116,14 @@ class CosmoHubClient:
         """Exchange HTTP Basic credentials once for an in-memory session token."""
         self._token = None
         with self._send("GET", f"{API_ORIGIN}/user", operation="sign-in", auth=(email, password)) as response:
-            _require_success(response, "sign-in")
-            self._rotate_token(response)
-            response.request.headers.pop("Authorization", None)
-            if self._token is None:
-                raise CosmoHubError("CosmoHub sign-in returned no session token", response.status_code)
+            try:
+                _require_success(response, "sign-in")
+                self._rotate_token(response)
+                if self._token is None:
+                    raise CosmoHubError("CosmoHub sign-in returned no session token", response.status_code)
+            finally:
+                if response.request is not None:
+                    response.request.headers.pop("Authorization", None)
 
     def _api(self, method, path, operation, *, read_json=True, **kwargs):
         with self._send(method, f"{API_ORIGIN}{path}", operation=operation,
@@ -184,12 +196,12 @@ class CosmoHubClient:
     def download(self, url, output):
         """Stream the result to disk, dropping authentication at an origin change."""
         output = Path(output)
-        url = urljoin(f"{API_ORIGIN}/", url)
+        url = _join_url(f"{API_ORIGIN}/", url)
         may_send_token = True
         for hop in range(6):
-            may_send_token = may_send_token and _origin(url) == (API_HOST, 443)
             # Validate every hop even after credentials have been dropped.
-            _origin(url)
+            origin = _origin(url)
+            may_send_token = may_send_token and origin == (API_HOST, 443)
             headers = self._authenticated_headers() if may_send_token else None
             with self._send("GET", url, operation="result download", headers=headers, stream=True) as response:
                 if may_send_token:
@@ -198,7 +210,7 @@ class CosmoHubClient:
                     location = response.headers.get("Location")
                     if not location or hop == 5:
                         raise CosmoHubError("CosmoHub result redirect failed", response.status_code)
-                    url = urljoin(url, location)
+                    url = _join_url(url, location)
                     continue
                 _require_success(response, "result download")
                 try:
