@@ -36,6 +36,16 @@ def _user_reply(*, token=TOKEN):
     responses.add_callback(responses.GET, f"{API}/user", callback=sign_in)
 
 
+def _serve_query(result):
+    """Fabricate CosmoHub's replies for one query whose result is the given file."""
+    responses.reset()
+    _user_reply()
+    responses.get(f"{API}/catalogs/syntax", json={"data": {"columns": []}})
+    responses.post(f"{API}/queries", json={"id": 42})
+    responses.get(f"{API}/queries", json=[{"id": 42, "status": "SUCCEEDED", "download_results": RESULT_URL}])
+    responses.get(RESULT_URL, body=result.read_bytes(), content_type="application/octet-stream")
+
+
 @pytest.fixture
 def flagship_parquet(tmp_path):
     config = load()
@@ -80,6 +90,19 @@ def test_sign_in_and_rotation_use_only_the_expected_credentials():
         client.sign_in(EMAIL, PASSWORD)
         assert client.catalog_metadata(353)["id"] == 353
         client.check_syntax("SELECT galaxy_id")
+
+
+@responses.activate
+def test_syntax_check_reads_the_replies_cosmohub_gives():
+    _user_reply()
+    responses.get(f"{API}/catalogs/syntax", json={"data": {"columns": [{"name": "galaxy_id"}]}})
+    responses.get(f"{API}/catalogs/syntax", json={"error": {"message": f"no such column near {PASSWORD}"}})
+    with CosmoHubClient() as client:
+        client.sign_in(EMAIL, PASSWORD)
+        assert "data" in client.check_syntax("SELECT galaxy_id")
+        with pytest.raises(CosmoHubError, match="rejected the query syntax") as error:
+            client.check_syntax("SELECT nothing")
+    assert PASSWORD not in str(error.value)
 
 
 @pytest.mark.parametrize("status", ["FAILED", "CANCELLED"])
@@ -149,9 +172,9 @@ def test_mocked_cli_api_flow_keeps_credentials_out_of_artifacts_and_errors(
 
     data = tmp_path / "data"
     data.mkdir()
-    args = ["--mode", "api", "--data-root", str(data)]
+    args = ["--data-root", str(data)]
     with caplog.at_level(logging.DEBUG):
-        main([*args, "--submit", "--poll-interval", "0"], environ=ENV.copy())
+        main([*args, "--fetch", "--poll-interval", "0"], environ=ENV.copy())
     raw = data / "raw" / "flagship2" / "mirror_843"
     output = raw / "flagship.parquet"
     pd.testing.assert_frame_equal(pd.read_parquet(output), table)
@@ -160,7 +183,7 @@ def test_mocked_cli_api_flow_keeps_credentials_out_of_artifacts_and_errors(
 
     responses.replace(responses.GET, f"{API}/user", status=403, body=f"Forbidden {PASSWORD} {TOKEN}")
     with pytest.raises(SystemExit) as error:
-        main([*args, "--resume", "42"], environ=ENV.copy())
+        main([*args, "--fetch", "--resume", "42"], environ=ENV.copy())
     assert error.value.code == 1
     stdout, stderr = capsys.readouterr()
     trace = "".join(traceback.format_exception(error.value))
@@ -171,31 +194,42 @@ def test_mocked_cli_api_flow_keeps_credentials_out_of_artifacts_and_errors(
 
 
 @responses.activate
-def test_manual_cli_writes_sql_and_ingests_without_network(tmp_path, flagship_parquet, capsys):
-    source, table = flagship_parquet
+def test_a_result_that_is_not_the_requested_table_is_refused(tmp_path, flagship_parquet, capsys):
+    source, _ = flagship_parquet
+    _serve_query(source)
     data = tmp_path / "data"
     data.mkdir()
-    args = ["--mode", "manual", "--data-root", str(data)]
-    main(args, environ=ENV.copy())
-    assert capsys.readouterr().out.strip()
+    with pytest.raises(SystemExit) as error:   # the catalogue is not a count result
+        main(["--data-root", str(data), "--check", "--poll-interval", "0"], environ=ENV.copy())
+    assert error.value.code == 1
+    assert "missing required columns" in capsys.readouterr().err
     raw = data / "raw" / "flagship2" / "mirror_843"
-    assert (raw / "query.sql").is_file()
-    main([*args, "--input", str(source)], environ=ENV.copy())
-    output = raw / "flagship.parquet"
-    pd.testing.assert_frame_equal(pd.read_parquet(output), table)
-    assert verified_entry(raw / "manifest.json", output)["row_count"] == len(table)
-    assert not responses.calls
+    assert (raw / "count_query.sql").is_file()
+    assert not list(raw.glob("*.parquet*"))   # neither the result nor a partial copy is kept
+
+
+@pytest.mark.parametrize("options", [
+    [], ["--resume", "42"], ["--refresh"], ["--check", "--fetch"], ["--fetch", "--verify"],
+    ["--verify", "--resume", "42"], ["--columns", "--refresh"],
+    # Options of earlier versions; --verify is offline, so nothing is requested if one were accepted.
+    ["--verify", "--count"], ["--verify", "--submit"], ["--verify", "--check-only"],
+    ["--verify", "--mode", "manual"], ["--verify", "--input", "x.parquet"],
+])
+def test_the_command_needs_one_step_and_rejects_retired_options(tmp_path, options):
+    with pytest.raises(SystemExit) as error:
+        main(["--data-root", str(tmp_path), *options], environ=ENV.copy())
+    assert error.value.code == 2
 
 
 @pytest.mark.parametrize("missing", [False, True])
 @responses.activate
-def test_check_only_verifies_requested_columns(tmp_path, missing):
+def test_columns_compares_the_request_with_the_catalogue_metadata(tmp_path, missing):
     columns = load().flagship.columns
     requested = columns[1:] if missing else columns
     _user_reply()
     metadata = {"id": 353, "columns": [{"name": name} for name in requested]}
     responses.get(f"{API}/catalogs/353", json=metadata)
-    args = ["--mode", "api", "--check-only", "--data-root", str(tmp_path)]
+    args = ["--columns", "--data-root", str(tmp_path)]
     if missing:
         with pytest.raises(SystemExit) as error:
             main(args, environ=ENV.copy())
@@ -206,18 +240,50 @@ def test_check_only_verifies_requested_columns(tmp_path, missing):
         assert json.loads((raw / "catalog_metadata.json").read_text()) == metadata
 
 
-def _ingest(tmp_path, data, catalogue, count_row):
+def _acquire(tmp_path, data, catalogue, count_row):
+    """Run the count query and the data query against fabricated replies."""
     config = load()
     cuts = [f"n_i{int(round(cut * 10))}" for cut in fetch_flagship.COUNT_CUTS]
     counts = {name: [0] for name in ["n_all", "n_kind_01", *cuts, *(f"{cut}_kind_01" for cut in cuts)]}
     counts.update({name: [value] for name, value in count_row.items()})
-    for name, table, option in (("counts", pd.DataFrame(counts), ["--count"]), ("rows", catalogue, [])):
+    for name, table, step in (("counts", pd.DataFrame(counts), "--check"), ("rows", catalogue, "--fetch")):
         path = tmp_path / f"{name}.parquet"
         table.to_parquet(path, index=False)
-        main(["--mode", "manual", "--data-root", str(data), *option, "--input", str(path)], environ=ENV.copy())
+        _serve_query(path)
+        main(["--data-root", str(data), step, "--poll-interval", "0"], environ=ENV.copy())
     return config
 
 
+@responses.activate
+def test_a_stored_result_is_not_queried_again(tmp_path, flagship_parquet, monkeypatch, capsys):
+    _, row = flagship_parquet
+    row["kind"] = 0
+    data = tmp_path / "data"
+    data.mkdir()
+    config = _acquire(tmp_path, data, row, {"n_i265_kind_01": 1})
+    folder = fetch_flagship.flagship_folder(data)
+    capsys.readouterr()
+    responses.reset()   # no reply and no credential from here on: a sign-in attempt would fail
+    for step, name in (("--check", "count result"), ("--fetch", "catalogue")):
+        main(["--data-root", str(data), step], environ={})
+        text = capsys.readouterr().out
+        assert f"The Flagship {name} is already stored" in text
+        assert ("The data query will return 1 rows." in text) == (step == "--check")
+    assert not responses.calls
+
+    _serve_query(tmp_path / "rows.parquet")
+    main(["--data-root", str(data), "--fetch", "--refresh", "--poll-interval", "0"], environ=ENV.copy())
+    assert "Submitted CosmoHub query 42" in capsys.readouterr().out
+
+    assert fetch_flagship._stored(config, folder, False)
+    with monkeypatch.context() as patch:   # the settings now ask for another query
+        patch.setattr(fetch_flagship, "_query", lambda config, count: "SELECT 1")
+        assert not fetch_flagship._stored(config, folder, False)
+    fetch_flagship._save_query(config, folder, "test", False)   # as an interrupted run leaves it
+    assert not fetch_flagship._stored(config, folder, False)
+
+
+@responses.activate
 def test_verify_compares_rows_with_the_count_query_offline(tmp_path, flagship_parquet, monkeypatch, capsys):
     _, row = flagship_parquet
     row["kind"] = 0
@@ -225,7 +291,11 @@ def test_verify_compares_rows_with_the_count_query_offline(tmp_path, flagship_pa
     catalogue["lsst_i_el_model3_ext"] = [1e-29, 1e-29, 1e-29, 3e-30]   # i = 23.9, 23.9, 23.9, 25.2
     data = tmp_path / "data"
     data.mkdir()
-    config = _ingest(tmp_path, data, catalogue, {"n_i265_kind_01": 4})
+    config = _acquire(tmp_path, data, catalogue, {"n_i265_kind_01": 4, "n_i253_kind_01": 4})
+    text = capsys.readouterr().out
+    assert "n_i265_kind_01: 4" in text and "The data query will return 4 rows." in text
+    assert "This differs by more than 10%" in text   # four rows are far below the real density
+    responses.reset()   # from here on any request would fail: the check is offline
     monkeypatch.setattr(fetch_flagship, "REFERENCE_DENSITY", 4 / config.diffsky.area_deg2)
     main(["--verify", "--data-root", str(data)])
     assert "Flagship acquisition verified." in capsys.readouterr().out
@@ -246,6 +316,7 @@ def test_verify_compares_rows_with_the_count_query_offline(tmp_path, flagship_pa
     ({"lsst_i_el_model3_ext": 1e-31}, "fail noiseless i < 26.5"),
     ({"lsst_i_el_model3_ext": 0.0}, "without a positive i-band flux"),
 ])
+@responses.activate
 def test_verify_names_the_failed_check(tmp_path, flagship_parquet, change, message):
     _, row = flagship_parquet
     row["kind"] = 0
@@ -255,12 +326,28 @@ def test_verify_names_the_failed_check(tmp_path, flagship_parquet, change, messa
             catalogue.loc[1, column] = value
     data = tmp_path / "data"
     data.mkdir()
-    config = _ingest(tmp_path, data, catalogue, {"n_i265_kind_01": change.get("count", 2)})
+    config = _acquire(tmp_path, data, catalogue, {"n_i265_kind_01": change.get("count", 2)})
     with pytest.raises(ValueError, match=message):
         fetch_flagship.verify(config, fetch_flagship.flagship_folder(data))
 
 
-def test_verify_requires_untouched_files(tmp_path):
+@responses.activate
+def test_verify_tells_a_missing_file_from_a_changed_one(tmp_path, flagship_parquet, capsys):
     with pytest.raises(SystemExit) as error:
         main(["--verify", "--data-root", str(tmp_path)])
     assert error.value.code == 1
+    assert "count result has not been acquired yet" in capsys.readouterr().err
+
+    _, row = flagship_parquet
+    row["kind"] = 0
+    data = tmp_path / "data"
+    data.mkdir()
+    config = _acquire(tmp_path, data, row, {"n_i265_kind_01": 1})
+    folder = fetch_flagship.flagship_folder(data)
+    (folder / "flagship.parquet").unlink()
+    with pytest.raises(ValueError, match="catalogue has not been acquired yet"):
+        fetch_flagship.verify(config, folder)
+    (folder / "counts.parquet").chmod(0o600)
+    (folder / "counts.parquet").write_bytes(b"changed")
+    with pytest.raises(ValueError, match="count result has no manifest record or differs"):
+        fetch_flagship.verify(config, folder)

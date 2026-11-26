@@ -1,4 +1,4 @@
-"""Extract the Diffsky shells. See manifoldcloud/acquisition/fetch_diffsky.py."""
+"""Acquire and verify the Diffsky shells. See manifoldcloud/acquisition/fetch_diffsky.py."""
 
 from manifoldcloud.acquisition.fetch_diffsky import main
 

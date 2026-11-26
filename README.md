@@ -9,7 +9,7 @@ This repository holds the shared software: one conda environment, the code that 
 | Module | Purpose | State |
 |---|---|---|
 | `manifoldcloud.core` | Settings, logging, provenance | Complete |
-| `manifoldcloud.acquisition` | Retrieve Flagship 2 and Diffsky | Complete and tested; the full download has not been run yet |
+| `manifoldcloud.acquisition` | Retrieve Flagship 2 and Diffsky | Complete and tested; both catalogues were acquired on 26 November 2026 |
 | `manifoldcloud.catalogue` | Common schema, sizes, noise, validation | Pilot version, tested on four Diffsky shells; developed further by the students |
 | Map training, redshift calibration, evaluation | | Not started; developed by the students |
 
@@ -43,17 +43,23 @@ python -m pytest
 
 ## Acquire the catalogues
 
-Catalogue data are not part of the repository. They are written to `outputs/data/`, which git ignores. The full instructions are in [documents/reproduce_data.md](documents/reproduce_data.md); the commands are:
+Catalogue data are not part of the repository. They are written to `outputs/data/`, which git ignores. Both catalogues are acquired with the same three steps: a small check of the route, the fetch, and an offline check of the stored rows. The full instructions are in [documents/reproduce_data.md](documents/reproduce_data.md); the commands are:
 
 ```bash
-python scripts/fetch_flagship.py --mode manual --count   # writes the SQL for CosmoHub
-python scripts/fetch_flagship.py --verify                # checks the stored Flagship rows
-python scripts/fetch_diffsky.py --dry-run --verify-full  # lists the 67 Diffsky shells
-python scripts/fetch_diffsky.py --verify-full            # extracts them; safe to restart
-python scripts/acquisition_status.py                     # what is present and intact
+python scripts/fetch_flagship.py --check    # small count query through CosmoHub
+python scripts/fetch_flagship.py --fetch    # the Flagship rows, 1.5 GB
+python scripts/fetch_flagship.py --verify   # checks the stored Flagship rows
+
+python scripts/fetch_diffsky.py --check     # sizes of the 67 Diffsky source files
+python scripts/fetch_diffsky.py --fetch     # the Diffsky rows, 2.0 GB
+python scripts/fetch_diffsky.py --verify    # checks the stored Diffsky rows
+
+python scripts/acquisition_status.py        # both catalogues: what is present and intact
 ```
 
-Flagship 2 needs a CosmoHub account. Diffsky is read from a public HTTPS server: the reader requests only the byte ranges that hold the needed columns, so only a small part of the 117 GB of source files is transferred (an estimated 10 GB).
+The only difference is the sign-in. Flagship 2 needs a CosmoHub account; the script asks for the e-mail and password at a prompt and stores neither. Diffsky is read from a public HTTPS server and needs no account: the reader requests only the byte ranges that hold the needed columns, so only a small part of the 117 GB of source files is transferred.
+
+Both fetch steps skip what is already stored and intact, so the same command can be run again after an interruption.
 
 Every stored file is listed in a `manifest.json` beside it, with its SHA-256, its source, the command that made it and the package versions.
 

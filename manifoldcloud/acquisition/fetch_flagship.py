@@ -1,17 +1,18 @@
-"""Prepare the Flagship queries, store their results and verify the acquired rows.
+"""Acquire the Flagship counts and catalogue from CosmoHub and verify the stored rows.
 
-Manual mode needs no network: it writes the SQL to paste into CosmoHub and later
-ingests the Parquet file downloaded from the browser. API mode submits the same
-SQL through CosmoHub's web API. Both leave counts.parquet, flagship.parquet, the
-SQL and manifest.json under raw/flagship2/mirror_843/ in the data root.
+The script signs in to CosmoHub's web API, submits the SQL, waits for the query
+and downloads its Parquet result. It leaves counts.parquet, flagship.parquet, the
+SQL and manifest.json under raw/flagship2/mirror_843/ in the data root. A result
+that is already stored and matches its checksum is not queried again. The
+e-mail and password are asked for at a prompt and are never stored.
 """
 
 import argparse
+from datetime import datetime
 from getpass import getpass
 from math import isfinite
 import os
 from pathlib import Path
-from shutil import copyfile
 
 import numpy as np
 import pyarrow.parquet as pq
@@ -99,36 +100,62 @@ def _query(config, count):
                             i_limit=config.cuts.preselection_i)
 
 
-def _save_query(args, config, folder, command):
-    sql = _query(config, args.count)
-    query = folder / ("count_query.sql" if args.count else "query.sql")
+def _files(folder, count):
+    """Return the paths of the SQL and of its result."""
+    if count:
+        return folder / "count_query.sql", folder / "counts.parquet"
+    return folder / "query.sql", folder / "flagship.parquet"
+
+
+def _stored(config, folder, count):
+    """Tell whether the result of the present query is stored and matches its checksum.
+
+    The result must also be newer than the stored SQL, so a query that was
+    saved again without completing does not pass for the result of an older one.
+    """
+    manifest = folder / "manifest.json"
+    query, output = _files(folder, count)
+    sent, result = verified_entry(manifest, query), verified_entry(manifest, output)
+    return bool(sent and result and query.read_text(encoding="utf-8") == _query(config, count)
+                and datetime.fromisoformat(sent["utc_time"]) <= datetime.fromisoformat(result["utc_time"]))
+
+
+def _save_query(config, folder, command, count):
+    sql = _query(config, count)
+    query, _ = _files(folder, count)
     write_text(query, sql)
     record_file(folder / "manifest.json", query, source=SOURCE, command=command, row_count=None, raw=True)
     return query, sql
 
 
-def _save_result(args, config, folder, command, writer):
-    output = folder / ("counts.parquet" if args.count else "flagship.parquet")
+def _save_result(config, folder, command, count, writer):
+    _, output = _files(folder, count)
     with atomic_path(output) as part:
         writer(part)
-        rows = _validate_parquet(part, config, args.count)
+        rows = _validate_parquet(part, config, count)
     record_file(folder / "manifest.json", output, source=SOURCE, command=command, row_count=rows, raw=True)
     print(f"Saved {rows:,} rows to {output}")
+    if count:
+        report_counts(config, output)
 
 
-def _manual(args, config, folder, command):
-    query, _ = _save_query(args, config, folder, command)
-    if args.input is None:
-        print(f"Open catalogue 353 in CosmoHub and paste {query} into Expert Mode.")
-        print("Submit the query in Parquet format and download the result when it succeeds.")
-        ingest = f"python {PROGRAM} --mode manual"
-        if args.count:
-            ingest += " --count"
-        print(f"Ingest the file with `{ingest} --input /path/to/result.parquet`.")
+def report_counts(config, path):
+    """Show the counts and what they predict for the data query, before it is run."""
+    row, = pq.read_table(path).to_pylist()
+    for name, value in row.items():
+        print(f"  {name}: {value:,}" if isinstance(value, int) else f"  {name}: {value}")
+    expected = row.get(f"{_count_label(config.cuts.preselection_i)}_kind_01")
+    bright = row.get(f"{_count_label(REFERENCE_CUT)}_kind_01")
+    if not isinstance(expected, int) or not isinstance(bright, int):
+        print("The counts for the selection are missing, so the data query cannot be checked in advance.")
         return
-    if not args.input.is_file():
-        raise ValueError("The manual input must be an existing Parquet file.")
-    _save_result(args, config, folder, command, lambda part: copyfile(args.input, part))
+    ratio = bright / config.diffsky.area_deg2 / REFERENCE_DENSITY
+    print(f"The data query will return {expected:,} rows.")
+    print(f"Density at i < {REFERENCE_CUT}: {bright / config.diffsky.area_deg2:,.0f} per deg^2 "
+          f"({ratio - 1:+.1%} against the reference {REFERENCE_DENSITY:,})")
+    if abs(ratio - 1) > DENSITY_TOLERANCE:
+        print(f"This differs by more than {DENSITY_TOLERANCE:.0%}: review the box and the selection "
+              "before running the data query.")
 
 
 def _sign_in(client, environ):
@@ -142,27 +169,33 @@ def _sign_in(client, environ):
         del email, password
 
 
-def _api(args, config, folder, command, client):
-    if args.check_only:
-        metadata = _public_metadata(client.catalog_metadata(config.flagship.catalogue))
-        columns = _column_names(metadata)
-        missing = set(config.flagship.columns) - columns
-        if missing:
-            raise ValueError(f"CosmoHub metadata is missing columns: {', '.join(sorted(missing))}")
-        output = folder / "catalog_metadata.json"
-        write_json(output, metadata)
-        record_file(folder / "manifest.json", output, source=SOURCE, command=command,
-                    row_count=len(columns), raw=True)
-        print(f"Verified all {len(config.flagship.columns)} requested columns in {output}")
-        return
-    _, sql = _save_query(args, config, folder, command)
-    query_id = args.resume
-    if args.submit:
+def _save_columns(config, folder, command, client):
+    """Save the catalogue metadata and confirm that it lists every requested column."""
+    metadata = _public_metadata(client.catalog_metadata(config.flagship.catalogue))
+    columns = _column_names(metadata)
+    missing = set(config.flagship.columns) - columns
+    if missing:
+        raise ValueError(f"CosmoHub metadata is missing columns: {', '.join(sorted(missing))}")
+    output = folder / "catalog_metadata.json"
+    write_json(output, metadata)
+    record_file(folder / "manifest.json", output, source=SOURCE, command=command,
+                row_count=len(columns), raw=True)
+    print(f"Verified all {len(config.flagship.columns)} requested columns in {output}")
+
+
+def _acquire(config, folder, command, client, *, count, resume, poll_interval):
+    """Run the count query or the data query and store its result.
+
+    With resume, wait for that earlier query instead of submitting a new one.
+    """
+    _, sql = _save_query(config, folder, command, count)
+    query_id = resume
+    if query_id is None:
         client.check_syntax(sql)
         query_id = client.submit(sql)
         print(f"Submitted CosmoHub query {query_id}", flush=True)
-    url = client.poll(query_id, interval=args.poll_interval)
-    _save_result(args, config, folder, command, lambda part: client.download(url, part))
+    url = client.poll(query_id, interval=poll_interval)
+    _save_result(config, folder, command, count, lambda part: client.download(url, part))
 
 
 def verify(config, folder):
@@ -174,8 +207,11 @@ def verify(config, folder):
     manifest = folder / "manifest.json"
     counts, data = folder / "counts.parquet", folder / "flagship.parquet"
     for path, label in ((counts, "count result"), (data, "catalogue")):
+        if not path.exists():
+            raise ValueError(f"The Flagship {label} has not been acquired yet: {path}")
         if not verified_entry(manifest, path):
-            raise ValueError(f"The Flagship {label} is missing or differs from its recorded checksum: {path}")
+            raise ValueError(f"The Flagship {label} has no manifest record or differs from its "
+                             f"recorded checksum: {path}")
     count_row, = pq.read_table(counts).to_pylist()
     box, limit = config.flagship.box, config.cuts.preselection_i
     expected = count_row.get(f"{_count_label(limit)}_kind_01")
@@ -217,26 +253,24 @@ def verify(config, folder):
 
 def main(argv=None, *, environ=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--mode", choices=("manual", "api"), help="Required unless --verify is given")
     parser.add_argument("--data-root", type=Path, help="Folder for catalogue data (default: outputs/data)")
-    parser.add_argument("--count", action="store_true", help="Prepare or acquire the count query")
-    parser.add_argument("--input", type=Path, help="Ingest a Parquet file downloaded manually")
+    parser.add_argument("--resume", type=int, metavar="ID",
+                        help="With --check or --fetch: wait for a query submitted earlier instead of "
+                             "submitting a new one")
+    parser.add_argument("--refresh", action="store_true",
+                        help="With --check or --fetch: query again even if the stored result matches its checksum")
     parser.add_argument("--poll-interval", type=float, default=10.0, metavar="SECONDS")
-    action = parser.add_mutually_exclusive_group()
-    action.add_argument("--check-only", action="store_true", help="Verify catalogue metadata")
-    action.add_argument("--submit", action="store_true", help="Submit a new API query")
-    action.add_argument("--resume", type=int, metavar="ID", help="Resume polling an API query")
+    action = parser.add_mutually_exclusive_group(required=True)
+    action.add_argument("--check", action="store_true",
+                        help="Run the small count query, which tests the route to CosmoHub")
+    action.add_argument("--fetch", action="store_true",
+                        help="Run the data query and download the catalogue; safe to restart")
     action.add_argument("--verify", action="store_true", help="Check the stored results offline")
+    action.add_argument("--columns", action="store_true",
+                        help="Optional: compare the requested columns with the catalogue metadata")
     args = parser.parse_args(argv)
-    api_action = args.check_only or args.submit or args.resume is not None
-    if args.verify and (args.mode or args.count or args.input):
-        parser.error("--verify takes no other action")
-    if not args.verify and args.mode is None:
-        parser.error("--mode is required unless --verify is given")
-    if args.mode == "manual" and api_action:
-        parser.error("API actions require --mode api")
-    if args.mode == "api" and (args.input or not api_action):
-        parser.error("API mode requires --check-only, --submit or --resume ID")
+    if not (args.check or args.fetch) and (args.resume is not None or args.refresh):
+        parser.error("--resume and --refresh apply only to --check and --fetch")
     if not isfinite(args.poll_interval) or args.poll_interval < 0:
         parser.error("--poll-interval must be finite and nonnegative")
     try:
@@ -245,12 +279,19 @@ def main(argv=None, *, environ=None):
         command = command_line(PROGRAM, argv)
         if args.verify:
             verify(config, folder)
-        elif args.mode == "manual":
-            _manual(args, config, folder, command)
+        elif not args.columns and args.resume is None and not args.refresh and _stored(config, folder, args.check):
+            print(f"The Flagship {'count result' if args.check else 'catalogue'} is already stored and matches "
+                  "its checksum; nothing was queried. Add --refresh to query CosmoHub again.")
+            if args.check:
+                report_counts(config, _files(folder, True)[1])
         else:
             with CosmoHubClient() as client:
                 _sign_in(client, os.environ if environ is None else environ)
-                _api(args, config, folder, command, client)
+                if args.columns:
+                    _save_columns(config, folder, command, client)
+                else:
+                    _acquire(config, folder, command, client, count=args.check, resume=args.resume,
+                             poll_interval=args.poll_interval)
     except (CosmoHubError, OSError, ValueError) as error:
         parser.exit(1, f"{error}\n")
 

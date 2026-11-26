@@ -1,4 +1,4 @@
-"""Prepare, store and verify the Flagship queries. See manifoldcloud/acquisition/fetch_flagship.py."""
+"""Acquire and verify the Flagship catalogue. See manifoldcloud/acquisition/fetch_flagship.py."""
 
 from manifoldcloud.acquisition.fetch_flagship import main
 

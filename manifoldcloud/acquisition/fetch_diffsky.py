@@ -1,9 +1,11 @@
-"""Extract selected Diffsky columns and publish resumable Parquet shells.
+"""Acquire the Diffsky shells from the public server and verify the stored rows.
 
-Each shell becomes one Parquet file under raw/diffsky/<catalogue>/ in the data
-root, with its checksum and source in manifest.json. A shell whose file already
-matches its recorded checksum is skipped, so an interrupted run can be restarted
-with the same command.
+The script reads the needed columns of each shell and keeps the rows below the
+noiseless i-band limit. Each shell becomes one Parquet file under
+raw/diffsky/<catalogue>/ in the data root, with its checksum and source in
+manifest.json. A shell whose file already matches its recorded checksum is
+skipped, so an interrupted run can be restarted with the same command. The
+server needs no account.
 """
 
 import argparse
@@ -22,10 +24,13 @@ from manifoldcloud.core.config import load, resolve_data_root
 from manifoldcloud.core.provenance import atomic_path, command_line, record_file, verified_entry
 
 PROGRAM = "scripts/fetch_diffsky.py"
-PILOT_COUNTS = {487: (880, 183), 442: (14_724, 11_362), 392: (51_476, 40_019), 300: (339_890, 280_356)}
-PILOT_STEP_300_BRIGHT = 124_057
-MIN_PILOT_MBPS = 2.0
+# Rows and synthetic rows of four source shells before the selection, from the pipeline plan.
+REFERENCE_COUNTS = {487: (880, 183), 442: (14_724, 11_362), 392: (51_476, 40_019), 300: (339_890, 280_356)}
+# Rows of step 300 with i < 25.3 and p_merge < 0.5, from the same plan.
+REFERENCE_STEP_300_BRIGHT = 124_057
 FULL_SOURCE_BYTES = 116_531_444_695
+# The noiseless i-band limit at which the Flagship density is checked, used here for comparison.
+DENSITY_CUT = 25.3
 # Seconds to wait before the second and third attempts at a remote shell.
 RETRY_WAITS = (30, 120)
 
@@ -33,6 +38,14 @@ RETRY_WAITS = (30, 120)
 def diffsky_folder(root, config):
     """Return the folder that holds the extracted shells of the configured catalogue."""
     return Path(root) / "raw" / "diffsky" / config.diffsky.catalogue
+
+
+def selected_steps(text, config):
+    """Return the steps to work on and whether they are the whole catalogue."""
+    steps = [int(step) for step in text.split(",")] if text else list(config.diffsky.steps)
+    if len(set(steps)) != len(steps) or not set(steps) <= set(config.diffsky.steps):
+        raise ValueError("Supply unique Diffsky step numbers from config/default.toml")
+    return steps, set(steps) == set(config.diffsky.steps)
 
 
 def depth_statistics(table, bright_cut):
@@ -84,13 +97,24 @@ def extract_with_retries(config, location, step, budget, *, remote):
             sleep(wait)
 
 
-def check_pilot_counts(step, details):
+def check_reference_counts(step, details):
+    """Compare the source counts recorded for a reference shell with the pipeline plan."""
     counts = details["rows_before"], details["synthetic_before"]
-    if counts != PILOT_COUNTS[step]:
-        raise ValueError(f"Step {step} has rows/synthetic {counts}, expected {PILOT_COUNTS[step]}")
-    if step == 300 and details["bright_and_unmerged"] != PILOT_STEP_300_BRIGHT:
+    if counts != REFERENCE_COUNTS[step]:
+        raise ValueError(f"Step {step} has rows/synthetic {counts}, expected {REFERENCE_COUNTS[step]}")
+    if step == 300 and details["bright_and_unmerged"] != REFERENCE_STEP_300_BRIGHT:
         raise ValueError(f"Step 300 bright and unmerged: {details['bright_and_unmerged']:,}, "
-                         f"expected {PILOT_STEP_300_BRIGHT:,}")
+                         f"expected {REFERENCE_STEP_300_BRIGHT:,}")
+
+
+def check_empty_steps(steps, empty_steps):
+    """Accept shells without selected rows only at the highest redshifts, which are the lowest steps."""
+    if not empty_steps:
+        return
+    nonempty_steps = set(steps) - set(empty_steps)
+    if not nonempty_steps or max(empty_steps) >= min(nonempty_steps):
+        raise ValueError(f"Empty outputs outside the highest-redshift prefix: {sorted(empty_steps)}")
+    print(f"Empty highest-redshift steps: {sorted(empty_steps)}")
 
 
 def fetch_curves(config, location, folder, command, budget, *, refresh=False, required=False):
@@ -110,40 +134,41 @@ def fetch_curves(config, location, folder, command, budget, *, refresh=False, re
     return f"{size:,} bytes"
 
 
-def fetch(args, config, root):
-    location = args.location or config.diffsky.location
-    steps = [int(step) for step in args.steps.split(",")] if args.steps else config.diffsky.steps
-    if len(set(steps)) != len(steps) or not set(steps) <= set(config.diffsky.steps):
-        raise ValueError("Supply unique Diffsky step numbers from config/default.toml")
-    if args.verify_pilot and set(steps) != set(PILOT_COUNTS):
-        raise ValueError("--verify-pilot requires steps 487,442,392,300")
-    if args.verify_full and set(steps) != set(config.diffsky.steps):
-        raise ValueError("--verify-full requires all configured shells")
+def check(location, steps, full):
+    """List the source size of each shell without transferring catalogue data.
 
-    sources = [shell_location(location, step) for step in steps]
-    if args.dry_run or args.verify_full:
-        sizes = resource_sizes(sources)
-        for step, size in zip(steps, sizes, strict=True):
-            print(f"Step {step}: {size:,} source bytes")
-        total = sum(sizes)
-        print(f"Total source size: {total:,} bytes across {len(steps)} shells")
-        if args.verify_full and total != FULL_SOURCE_BYTES:
+    For the whole catalogue the total must equal the size recorded when the
+    catalogue was chosen, so a changed source is noticed before a long run.
+    """
+    sizes = resource_sizes([shell_location(location, step) for step in steps])
+    for step, size in zip(steps, sizes, strict=True):
+        print(f"Step {step}: {size:,} source bytes")
+    total = sum(sizes)
+    print(f"Total source size: {total:,} bytes across {len(steps)} shells")
+    if full:
+        if total != FULL_SOURCE_BYTES:
             raise ValueError(f"Full Diffsky source size differs from {FULL_SOURCE_BYTES:,} bytes")
-        if args.dry_run:
-            return
+        print("The total matches the size recorded for the catalogue.")
+
+
+def fetch(args, config, root):
+    """Extract the selected shells and the transmission curves, skipping what is stored and intact."""
+    location = args.location or config.diffsky.location
+    steps, full = selected_steps(args.steps, config)
+    if full:
+        check(location, steps, full)
 
     folder = diffsky_folder(root, config)
     manifest = folder / "manifest.json"
     command = command_line(PROGRAM, args.arguments)
     budget = TransferBudget(limit=args.byte_limit)
     started = perf_counter()
-    fetched = 0
     empty_steps = []
     try:
-        curves = fetch_curves(config, location, folder, command, budget,
-                              refresh=args.refresh, required=args.verify_full)
+        curves = fetch_curves(config, location, folder, command, budget, refresh=args.refresh, required=full)
         print(f"Transmission curves: {curves}", flush=True)
-        for number, (step, source) in enumerate(zip(steps, sources, strict=True), start=1):
+        for number, step in enumerate(steps, start=1):
+            source = shell_location(location, step)
             output = folder / f"shell_{step}.parquet"
             saved = None if args.refresh else verified_entry(manifest, output)
             if saved:
@@ -155,60 +180,134 @@ def fetch(args, config, root):
                 shell_started = perf_counter()
                 selected, details = extract_with_retries(config, location, step, budget,
                                                          remote=not isinstance(source, Path))
-                if args.verify_pilot:
-                    check_pilot_counts(step, details)
                 with atomic_path(output) as part:
                     selected.to_parquet(part, index=False)
                     if pq.ParquetFile(part).metadata.num_rows != len(selected):
                         raise ValueError(f"Step {step} has an inconsistent Parquet row count")
                 record_file(manifest, output, source=source, command=command,
                             row_count=len(selected), details=details, raw=True)
-                fetched += 1
                 action = f"{budget.bytes_received - before:,} bytes in {perf_counter() - shell_started:.2f} s"
-            if args.verify_pilot:
-                check_pilot_counts(step, details)
-            if args.verify_full and details["rows_after"] == 0:
+            if details["rows_after"] == 0:
                 empty_steps.append(step)
             print(f"Step {step} ({number} of {len(steps)}): {details['rows_before']:,} before, "
                   f"{details['rows_after']:,} after, {details['synthetic_before']:,} synthetic before; {action}",
                   flush=True)
             if step == 300:
                 print(f"Step 300: i < 25.3 and p_merge < 0.5: {details['bright_and_unmerged']:,} rows", flush=True)
-            if args.verify_full and not verified_entry(manifest, output):
+            if full and not verified_entry(manifest, output):
                 raise ValueError(f"Manifest checksum failed for step {step}")
     finally:
         elapsed = perf_counter() - started
         rate = budget.bytes_received / 1_000_000 / elapsed
         print(f"Transfer: {budget.bytes_received:,} payload bytes; {budget.bytes_reserved:,} reserved bytes; "
               f"{budget.requests} range requests; {elapsed:.2f} s; {rate:.3f} MB/s", flush=True)
-    if args.verify_pilot:
-        if fetched != len(steps):
-            raise ValueError("Pilot throughput requires timing all four shells together; use --refresh")
-        if rate <= MIN_PILOT_MBPS:
-            raise ValueError(f"Pilot throughput {rate:.3f} MB/s did not exceed {MIN_PILOT_MBPS:.1f} MB/s")
-    if args.verify_full and empty_steps:
-        nonempty_steps = set(steps) - set(empty_steps)
-        if not nonempty_steps or max(empty_steps) >= min(nonempty_steps):
-            raise ValueError(f"Empty outputs outside the highest-redshift prefix: {sorted(empty_steps)}")
-        print(f"Empty highest-redshift steps: {sorted(empty_steps)}")
+    if full:
+        check_empty_steps(steps, empty_steps)
+    print(f"Stored {len(steps)} of {len(config.diffsky.steps)} shells in {folder}")
+
+
+def verify(config, folder, steps=None):
+    """Check the stored shells against their checksums, the selection and the reference counts.
+
+    The check is offline and reads one shell at a time, so it works on a
+    laptop. Without steps it covers the whole catalogue and the transmission
+    curves. Returns the measured numbers and raises ValueError at the first
+    check that fails.
+    """
+    full = steps is None
+    steps = list(config.diffsky.steps) if full else list(steps)
+    manifest = folder / "manifest.json"
+    limit = config.cuts.preselection_i
+    required = {*config.diffsky.columns, "is_synthetic", "step"}
+    rows = bright = 0
+    faintest = -np.inf
+    empty_steps, reference_steps = [], []
+    for step in steps:
+        path = folder / f"shell_{step}.parquet"
+        if not path.exists():
+            raise ValueError(f"Diffsky shell {step} has not been acquired yet: {path}")
+        entry = verified_entry(manifest, path)
+        if not entry:
+            raise ValueError(f"Diffsky shell {step} has no manifest record or differs from its "
+                             f"recorded checksum: {path}")
+        shell = pq.ParquetFile(path)
+        missing = required - set(shell.schema_arrow.names)
+        if missing:
+            raise ValueError(f"Diffsky shell {step} is missing columns: {', '.join(sorted(missing))}")
+        table = shell.read(columns=["lsst_i_unlensed", "step"])
+        magnitudes = table.column("lsst_i_unlensed").to_numpy()
+        details = entry["details"]
+        if not len(magnitudes) == entry["row_count"] == details["rows_after"]:
+            raise ValueError(f"Diffsky shell {step} has {len(magnitudes):,} rows; the manifest records "
+                             f"{entry['row_count']:,}.")
+        if not np.all(table.column("step").to_numpy() == step):
+            raise ValueError(f"Diffsky shell {step} has rows labelled with another step.")
+        if not np.all(magnitudes < limit):
+            raise ValueError(f"Diffsky shell {step} has rows that fail noiseless i < {limit}.")
+        if step in REFERENCE_COUNTS:
+            check_reference_counts(step, details)
+            reference_steps.append(step)
+        if len(magnitudes):
+            faintest = max(faintest, float(magnitudes.max()))
+        else:
+            empty_steps.append(step)
+        rows += len(magnitudes)
+        bright += int(np.count_nonzero(magnitudes < DENSITY_CUT))
+
+    print(f"Shells: {len(steps)} of {len(config.diffsky.steps)}, {rows:,} rows, all with noiseless i < {limit}, "
+          f"faintest i = {faintest:.4f}")
+    if reference_steps:
+        print(f"Reference shells {', '.join(map(str, reference_steps))}: source counts match the pipeline plan")
+    result = {"shells": len(steps), "rows": rows, "bright_rows": bright, "faintest_i": faintest,
+              "empty_steps": empty_steps}
+    if not full:
+        print("Checked a subset of the shells. Run --verify without --steps for the whole catalogue.")
+        return result
+    check_empty_steps(steps, empty_steps)
+    curves = folder / Path(str(curves_location(folder, config.diffsky.catalogue))).name
+    if not curves.exists():
+        raise ValueError(f"The Diffsky transmission curves have not been acquired yet: {curves}")
+    if not verified_entry(manifest, curves):
+        raise ValueError("The Diffsky transmission curves have no manifest record or differ from their "
+                         f"recorded checksum: {curves}")
+    result["density"] = bright / config.diffsky.area_deg2
+    print(f"Density at i < {DENSITY_CUT}: {result['density']:,.0f} per deg^2 (no reference value is set)")
+    print("Transmission curves: verified")
+    print("Diffsky acquisition verified.")
+    return result
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--data-root", type=Path, help="Folder for catalogue data (default: outputs/data)")
-    parser.add_argument("--location", help="Local directory or public HTTPS base URL")
-    parser.add_argument("--steps", help="Comma-separated subset of catalogue steps")
-    parser.add_argument("--dry-run", action="store_true", help="Show source sizes without downloading data")
-    parser.add_argument("--refresh", action="store_true", help="Re-read shells even if their checksums match")
-    parser.add_argument("--byte-limit", type=int, help="Maximum total byte reservations for range requests")
-    verification = parser.add_mutually_exclusive_group()
-    verification.add_argument("--verify-pilot", action="store_true", help="Check pilot counts and throughput")
-    verification.add_argument("--verify-full", action="store_true", help="Check full source size and output checksums")
+    parser.add_argument("--steps", help="Comma-separated subset of the catalogue steps (default: all)")
+    parser.add_argument("--location", help="With --check or --fetch: a local folder or HTTPS address "
+                                           "that holds the source files")
+    parser.add_argument("--refresh", action="store_true",
+                        help="With --fetch: read the shells again even if their checksums match")
+    parser.add_argument("--byte-limit", type=int,
+                        help="With --fetch: maximum total byte reservations for range requests")
+    action = parser.add_mutually_exclusive_group(required=True)
+    action.add_argument("--check", action="store_true",
+                        help="List the source sizes; transfers no catalogue data")
+    action.add_argument("--fetch", action="store_true", help="Extract the shells; safe to restart")
+    action.add_argument("--verify", action="store_true", help="Check the stored shells offline")
     args = parser.parse_args(argv)
+    if not args.fetch and (args.refresh or args.byte_limit is not None):
+        parser.error("--refresh and --byte-limit apply only to --fetch")
+    if args.verify and args.location:
+        parser.error("--location applies only to --check and --fetch")
     args.arguments = argv
     try:
         config = load()
-        fetch(args, config, resolve_data_root(args.data_root, config))
+        root = resolve_data_root(args.data_root, config)
+        if args.verify:
+            steps = selected_steps(args.steps, config)[0] if args.steps else None
+            verify(config, diffsky_folder(root, config), steps)
+        elif args.check:
+            check(args.location or config.diffsky.location, *selected_steps(args.steps, config))
+        else:
+            fetch(args, config, root)
     except (OSError, ValueError, aiohttp.ClientError) as error:
         parser.exit(1, f"{error}\n")
 

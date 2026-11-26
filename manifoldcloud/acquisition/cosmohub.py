@@ -163,8 +163,8 @@ class CosmoHubClient:
         deadline = monotonic() + timeout
         while True:
             result = self._api("GET", "/queries", "query status")
-            # The documented fields come from the public app. The live response
-            # envelope still needs the mentor's first authorised API check.
+            # CosmoHub's website reads this reply as a plain list of queries; a
+            # list wrapped under "queries" is accepted as well.
             queries = result.get("queries") if isinstance(result, dict) else result
             if not isinstance(queries, list):
                 raise CosmoHubError("CosmoHub returned an invalid query list")
