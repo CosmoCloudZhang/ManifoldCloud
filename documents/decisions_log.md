@@ -50,3 +50,30 @@
 - The Diffsky density at noiseless i < 25.3 is 141,722 per deg², counting every stored row. Flagship has 194,943 per deg² at the same limit. No reference value is set for Diffsky, so the check reports the number without judging it. The difference is left for the catalogue stage to examine.
 - `--check` and `--fetch` for Flagship no longer query CosmoHub when the result of the present query is stored and matches its checksum; `--refresh` queries again. Diffsky already skipped intact shells. The calls to CosmoHub are unchanged, but the new option names have run only against fabricated replies and against the stored files.
 - `--verify-pilot` was removed with its throughput gate of 2 MB/s, which the pilot never passed for the reason recorded on 25 November. `--check-only` is now `--columns` and has still not been run against CosmoHub.
+
+## 2026-11-26 Clean-up after the acquisition
+
+- `scripts/make_flagship_query.py` was removed. It wrote the SQL to paste into the CosmoHub website; the fetch now writes the SQL beside its results. Its two SQL files moved to `tests/queries/`, where a test compares the query builder with them. They are identical to the stored `query.sql` and `count_query.sql`.
+- `pilot_steps` was removed from `config/default.toml`; no code read it.
+- `--byte-limit` was removed from the Diffsky fetch. It capped the transfer of the pilot run. The reader keeps its transfer limit, which its own tests use.
+- `CosmoHubClient.cancel` was removed; no command called it.
+- The ignore rule for `/data/`, the data folder of the first build, was removed.
+- Conda holds only `base` and `ManifoldConda`. The package cache that no environment used was cleared, which freed 1.1 GB.
+- `--columns` was kept until the mentor has run it once against CosmoHub.
+- A `scratch/` folder at the repository root, created by the mentor and ignored by git, holds quick notes, scripts and prompts for one-off tasks. No tracked file depends on it.
+- At the mentor's request the instructions given to the AI coding assistant for the first build and the run report of that build moved from `documents/archive/` to the mentor's `scratch/` folder. They remain in the git history; the last commit that holds them is `415ebef`. The pipeline plan stays in the archive because the code and the guide cite it.
+- The tracked copies of the two Flagship queries were removed at the mentor's request, because the fetch stores the SQL it sends beside its results. `scripts/fetch_flagship.py --verify` now also confirms that this stored SQL is the query that the settings describe. The tests still run both queries on fabricated rows.
+- `outputs/` is kept for production runs, at the mentor's request. The figures, the summary table and the data products of the four-shell pilot moved to the mentor's `scratch/` folder, and the pilot figures and table are no longer tracked; the last commit that holds them is `415ebef`. `scripts/validate.py` always writes to `outputs/figures/` and `outputs/tables/`, whatever shells it is given; this is left for the catalogue stage to resolve.
+
+## 2026-11-26 Diffsky fetched again with the present command
+
+- The mentor ran `scripts/fetch_diffsky.py --fetch --refresh`, which read all 67 shells and the transmission curves again. The run took 102 minutes, from 17:39 to 19:21 UTC. The manifest now records this command for every Diffsky file; these records replace those of the first run and of the pilot.
+- The result equals the first run: 8,754,707 rows kept out of 54,676,739, no empty shell, and the same total of 1,956,278,079 bytes for the 67 shells.
+- `scripts/fetch_diffsky.py --verify` passed on the rewritten shells, and `scripts/acquisition_status.py` reports the acquisition as complete.
+
+## 2026-11-27 A sample of the raw catalogues
+
+- `python scripts/make_raw_sample.py --make` writes both samples to `outputs/data/sample/`, and `python scripts/make_raw_sample.py --verify` checks the samples against their manifest.
+- Flagship keeps rows where `random_index < fraction`. The raw Diffsky rows carry no random number, so Diffsky keeps rows where `uniform_from_id(gal_id) < fraction`. At a fraction of 0.01 the samples hold 154,354 Flagship rows and 87,804 Diffsky rows.
+- The identifier hash moved unchanged from `catalogue/harmonise.py` to `core/sampling.py`. The caller in the harmonisation code now imports and uses it. This is the only change to the catalogue module.
+- The sample drops the Flagship schema's `comments` metadata, which names the account holder. `--withhold` lets the command make a copy without specified columns.

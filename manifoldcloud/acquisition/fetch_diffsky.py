@@ -161,7 +161,7 @@ def fetch(args, config, root):
     folder = diffsky_folder(root, config)
     manifest = folder / "manifest.json"
     command = command_line(PROGRAM, args.arguments)
-    budget = TransferBudget(limit=args.byte_limit)
+    budget = TransferBudget()
     started = perf_counter()
     empty_steps = []
     try:
@@ -285,16 +285,14 @@ def main(argv=None):
                                            "that holds the source files")
     parser.add_argument("--refresh", action="store_true",
                         help="With --fetch: read the shells again even if their checksums match")
-    parser.add_argument("--byte-limit", type=int,
-                        help="With --fetch: maximum total byte reservations for range requests")
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--check", action="store_true",
                         help="List the source sizes; transfers no catalogue data")
     action.add_argument("--fetch", action="store_true", help="Extract the shells; safe to restart")
     action.add_argument("--verify", action="store_true", help="Check the stored shells offline")
     args = parser.parse_args(argv)
-    if not args.fetch and (args.refresh or args.byte_limit is not None):
-        parser.error("--refresh and --byte-limit apply only to --fetch")
+    if args.refresh and not args.fetch:
+        parser.error("--refresh applies only to --fetch")
     if args.verify and args.location:
         parser.error("--location applies only to --check and --fetch")
     args.arguments = argv

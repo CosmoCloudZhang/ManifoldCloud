@@ -30,10 +30,10 @@ venv/
 config/local.toml
 
 # --- Catalogue data and other large products ------------------------------
-# Catalogue files are never committed. Small figures and tables under
-# outputs/figures and outputs/tables stay tracked.
+# Catalogue files are never committed. Figures and tables from production
+# runs under outputs/figures and outputs/tables are tracked; the products of
+# exploratory runs belong in scratch/.
 /outputs/data/
-/data/
 *.parquet
 *.hdf5
 *.h5
@@ -45,6 +45,11 @@ config/local.toml
 *.joblib
 *.part
 *.log
+
+# --- Scratch --------------------------------------------------------------
+# Quick notes, scripts and prompts for one-off tasks. No tracked file may
+# depend on anything in this folder.
+/scratch/
 
 # --- Teaching material and office files -----------------------------------
 # Lecture material is kept outside this repository.

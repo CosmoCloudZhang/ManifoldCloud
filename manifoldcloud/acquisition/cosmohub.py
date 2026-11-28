@@ -125,12 +125,12 @@ class CosmoHubClient:
                 if response.request is not None:
                     response.request.headers.pop("Authorization", None)
 
-    def _api(self, method, path, operation, *, read_json=True, **kwargs):
+    def _api(self, method, path, operation, **kwargs):
         with self._send(method, f"{API_ORIGIN}{path}", operation=operation,
                         headers=self._authenticated_headers(), **kwargs) as response:
             self._rotate_token(response)
             _require_success(response, operation)
-            if read_json and response.status_code != 204:
+            if response.status_code != 204:
                 return _json(response, operation)
         return None
 
@@ -187,11 +187,6 @@ class CosmoHubClient:
             if remaining <= 0:
                 raise CosmoHubError("CosmoHub query polling timed out")
             sleep(min(interval, remaining))
-
-    def cancel(self, query_id):
-        """Request cancellation by numeric query ID."""
-        identifier = _query_id(query_id)
-        self._api("POST", f"/queries/{identifier}/cancel", "query cancellation", read_json=False)
 
     def download(self, url, output):
         """Stream the result to disk, dropping authentication at an origin change."""

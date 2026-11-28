@@ -184,9 +184,10 @@ def test_remote_shell_is_retried_and_local_shell_is_not(monkeypatch, capsys):
 
 @pytest.mark.parametrize("options", [
     [], ["--check", "--fetch"], ["--fetch", "--verify"], ["--check", "--refresh"],
-    ["--verify", "--byte-limit", "5"], ["--verify", "--location", "x"],
+    ["--verify", "--refresh"], ["--verify", "--location", "x"],
     # Options of earlier versions; --verify is offline, so nothing is requested if one were accepted.
     ["--verify", "--dry-run"], ["--verify", "--verify-full"], ["--verify", "--verify-pilot"],
+    ["--verify", "--byte-limit", "5"],
 ])
 def test_the_command_needs_one_step_and_rejects_retired_options(tmp_path, options):
     with pytest.raises(SystemExit) as error:

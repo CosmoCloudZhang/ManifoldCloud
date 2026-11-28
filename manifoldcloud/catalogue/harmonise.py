@@ -5,6 +5,7 @@ import pandas as pd
 import pyarrow as pa
 
 from manifoldcloud.catalogue.sizes import SIZE_RULE, bulge_flux_fraction, combine_axes, diffsky_axes
+from manifoldcloud.core.sampling import uniform_from_id
 
 
 BANDS = tuple("ugrizy")
@@ -26,16 +27,6 @@ _FINITE_COLUMNS = [*MAG_COLUMNS, "z_true", "a_hl", "b_hl"]
 
 def _frame(raw, values):
     return pd.DataFrame(values, index=raw.index, columns=HARMONISED_SCHEMA.names).astype(_DTYPES)
-
-
-def _random_index(gal_id):
-    # SplitMix64 followed by the top 24 bits, an exactly representable float32 in [0, 1).
-    hashed = np.asarray(gal_id, dtype=np.int64).view(np.uint64).copy()
-    hashed += np.uint64(0x9E3779B97F4A7C15)
-    hashed = (hashed ^ (hashed >> 30)) * np.uint64(0xBF58476D1CE4E5B9)
-    hashed = (hashed ^ (hashed >> 27)) * np.uint64(0x94D049BB133111EB)
-    hashed ^= hashed >> 31
-    return (hashed >> 40).astype(np.float32) * np.float32(2.0 ** -24)
 
 
 def _ab_magnitude(flux):
@@ -79,7 +70,7 @@ def harmonise_diffsky(raw, cosmology):
         "bulge_frac": fraction, "a_hl": a_hl, "b_hl": b_hl,
         "log_mstar": raw["logsm_obs"], "is_central": raw["central"].eq(1),
         "is_synthetic": raw["is_synthetic"], "p_merge": raw["p_merge"],
-        "random_index": _random_index(raw["gal_id"]),
+        "random_index": uniform_from_id(raw["gal_id"]),
     })
 
 

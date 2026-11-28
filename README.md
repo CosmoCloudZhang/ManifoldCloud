@@ -63,21 +63,29 @@ Both fetch steps skip what is already stored and intact, so the same command can
 
 Every stored file is listed in a `manifest.json` beside it, with its SHA-256, its source, the command that made it and the package versions.
 
+A 1% sample of both raw catalogues is available for lessons and quick tests. It writes 154,354 Flagship rows and 87,804 Diffsky rows to `outputs/data/sample/` and takes about 40 MB in total. Use `--withhold` when making the sample to omit named columns, and `--folder` to choose another sample folder.
+
+```bash
+python scripts/make_raw_sample.py --make
+python scripts/make_raw_sample.py --verify
+```
+
 ## Layout
 
 ```
 manifoldcloud/        the Python package
-  core/               settings, logging, provenance
-  acquisition/        Diffsky reader and fetch, Flagship queries, CosmoHub client, status
+  core/               settings, logging, provenance, sampling
+  acquisition/        Diffsky reader and fetch, Flagship queries, CosmoHub client, status, a sample of the raw rows
   catalogue/          pilot harmonisation, sizes, noise and validation
 scripts/              commands; each calls a function in the package
 tests/                run offline with fabricated data
 config/default.toml   catalogue names, columns, sky box, cuts and seeds
-documents/            guides, the decisions log and archived build records
+documents/            guides, the decisions log and the archived plan of the first build
 outputs/data/         catalogue data (ignored by git)
-outputs/figures/      figures made by the scripts
-outputs/tables/       summary tables made by the scripts
+outputs/figures/      figures from production runs of the scripts
+outputs/tables/       summary tables from production runs of the scripts
 report/               LaTeX sources of the written reports
+scratch/              quick notes, scripts, prompts and exploratory results (ignored by git)
 environment.yml       the single environment recipe
 ```
 
@@ -96,7 +104,7 @@ The environment includes [RAIL](https://github.com/LSSTDESC/rail) and [qp](https
 
 ## How the code was written
 
-The first version of the pipeline and this restructuring were written with AI coding assistants under the mentor's direction and review. The instructions and the run report of the first build are kept in [documents/archive](documents/archive).
+The first version of the pipeline and this restructuring were written with AI coding assistants under the mentor's direction and review. The plan that the first build followed is kept in [documents/archive](documents/archive). The instructions given to the assistant for that build and its run report are no longer part of the repository; they remain in its git history, and the last commit that holds them is `415ebef`.
 
 ## Licence
 

@@ -118,13 +118,9 @@ def test_poll_raises_on_unsuccessful_terminal_state(status):
 
 
 @responses.activate
-def test_cancel_and_cross_origin_download_are_separately_authenticated(tmp_path):
+def test_a_download_redirected_to_another_host_drops_the_token(tmp_path):
     _user_reply()
     external = "https://storage.example.invalid/result.parquet"
-
-    def cancel(request):
-        assert request.headers["Authorization"] == f"Token {TOKEN}"
-        return 204, {}, ""
 
     def redirect(request):
         assert request.headers["Authorization"] == f"Token {TOKEN}"
@@ -135,13 +131,11 @@ def test_cancel_and_cross_origin_download_are_separately_authenticated(tmp_path)
         assert "X-Token" not in request.headers
         return 200, {"Content-Type": "application/octet-stream"}, b"mock result"
 
-    responses.add_callback(responses.POST, f"{API}/queries/42/cancel", callback=cancel)
     responses.add_callback(responses.GET, RESULT_URL, callback=redirect)
     responses.add_callback(responses.GET, external, callback=result)
     destination = tmp_path / "result.parquet"
     with CosmoHubClient() as client:
         client.sign_in(EMAIL, PASSWORD)
-        client.cancel(42)
         client.download(RESULT_URL, destination)
     assert destination.read_bytes() == b"mock result"
 
@@ -329,6 +323,26 @@ def test_verify_names_the_failed_check(tmp_path, flagship_parquet, change, messa
     config = _acquire(tmp_path, data, catalogue, {"n_i265_kind_01": change.get("count", 2)})
     with pytest.raises(ValueError, match=message):
         fetch_flagship.verify(config, fetch_flagship.flagship_folder(data))
+
+
+@responses.activate
+def test_verify_ties_the_stored_sql_to_the_settings(tmp_path, flagship_parquet, monkeypatch):
+    _, row = flagship_parquet
+    row["kind"] = 0
+    data = tmp_path / "data"
+    data.mkdir()
+    config = _acquire(tmp_path, data, row, {"n_i265_kind_01": 1})
+    folder = fetch_flagship.flagship_folder(data)
+    monkeypatch.setattr(fetch_flagship, "REFERENCE_DENSITY", 1 / config.diffsky.area_deg2)
+    fetch_flagship.verify(config, folder)
+
+    build = fetch_flagship._query   # the settings now ask for a different data query
+    monkeypatch.setattr(fetch_flagship, "_query", lambda config, count: build(config, count) + ("" if count else " "))
+    with pytest.raises(ValueError, match="data query is missing or differs from the query that the settings"):
+        fetch_flagship.verify(config, folder)
+    (folder / "count_query.sql").unlink()
+    with pytest.raises(ValueError, match="count query is missing or differs"):
+        fetch_flagship.verify(config, folder)
 
 
 @responses.activate

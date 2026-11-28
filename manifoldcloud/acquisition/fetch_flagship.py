@@ -201,8 +201,10 @@ def _acquire(config, folder, command, client, *, count, resume, poll_interval):
 def verify(config, folder):
     """Check the stored catalogue against its checksum, the selection and the count query.
 
-    Reads the catalogue in batches, so it works on a laptop. Returns the measured
-    numbers and raises ValueError at the first check that fails.
+    The SQL stored beside the results must be the query that the settings
+    describe now. Reads the catalogue in batches, so it works on a laptop.
+    Returns the measured numbers and raises ValueError at the first check that
+    fails.
     """
     manifest = folder / "manifest.json"
     counts, data = folder / "counts.parquet", folder / "flagship.parquet"
@@ -212,6 +214,11 @@ def verify(config, folder):
         if not verified_entry(manifest, path):
             raise ValueError(f"The Flagship {label} has no manifest record or differs from its "
                              f"recorded checksum: {path}")
+    for count, label, step in ((True, "count query", "--check"), (False, "data query", "--fetch")):
+        query, _ = _files(folder, count)
+        if not verified_entry(manifest, query) or query.read_text(encoding="utf-8") != _query(config, count):
+            raise ValueError(f"The stored Flagship {label} is missing or differs from the query that the "
+                             f"settings describe now: {query}. Run {step} again.")
     count_row, = pq.read_table(counts).to_pylist()
     box, limit = config.flagship.box, config.cuts.preselection_i
     expected = count_row.get(f"{_count_label(limit)}_kind_01")

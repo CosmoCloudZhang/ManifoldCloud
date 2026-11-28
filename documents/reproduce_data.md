@@ -2,7 +2,7 @@
 
 Catalogue A is Euclid Flagship 2, release 1.1 (CosmoHub catalogue 353). Catalogue B is Diffsky `c260710_09_02_2026`, patch 843. Both cover the same 34.3774 deg².
 
-Sections 1 to 3 are the acquisition, which is complete and tested. Both catalogues were acquired this way on 26 November 2026. Section 4 is the pilot catalogue preparation, which the students develop further.
+Sections 1 to 3 cover the acquisition, which is complete and tested. Both catalogues were acquired this way on 26 November 2026. Section 4 makes a sample of the raw rows, and section 5 covers the pilot catalogue preparation, which the students develop further.
 
 ## Before you start
 
@@ -84,7 +84,8 @@ The check is offline. It recomputes both checksums and reads the catalogue in ba
 - every row is a galaxy (`kind` 0 or 1);
 - every row has a positive i-band flux and noiseless i < 26.5;
 - the row count equals the count query;
-- the density at i < 25.3 is within 10% of 192,700 per deg².
+- the density at i < 25.3 is within 10% of 192,700 per deg²;
+- the SQL stored beside the results is the query that the settings describe now.
 
 ### Checking the column names
 
@@ -110,7 +111,7 @@ caffeinate -i python scripts/fetch_diffsky.py --fetch
 
 What to expect:
 
-- **Duration:** on 26 November 2026 the 63 shells that were not yet stored took about an hour and a half.
+- **Duration:** on 26 November 2026 a run of all 67 shells took 1 hour 42 minutes.
 - **Restarting:** run the same command again. Shells whose files match their recorded checksums are skipped.
 - **Outages:** a shell that fails is tried again after 30 s and after 120 s before the run stops.
 - **Output:** `shell_<step>.parquet` for each shell, the filter transmission curves and `manifest.json` under `outputs/data/raw/diffsky/c260710_09_02_2026/`. Each shell keeps the rows with noiseless i < 26.5. The 67 shells hold 8,754,707 rows in 2.0 GB.
@@ -141,7 +142,18 @@ python scripts/acquisition_status.py
 
 The report is offline and covers both catalogues. It recomputes the checksum of every stored file and lists what is missing or changed. It ends with `Acquisition complete.` once all 67 shells, the transmission curves and the four Flagship files are in place.
 
-## 4. Catalogue preparation (pilot version)
+## 4. A sample of the raw catalogues
+
+```bash
+python scripts/make_raw_sample.py --make
+python scripts/make_raw_sample.py --verify
+```
+
+The command works offline with verified raw files and writes the samples to `outputs/data/sample/`. At the default fraction of 0.01, Flagship keeps 154,354 rows where `random_index < fraction`. Diffsky keeps 87,804 rows where `uniform_from_id(gal_id) < fraction`.
+
+Use `--withhold` with `--make` to leave out named columns. Use `--folder` with either command to choose a different sample folder under the data root. These files are for use within the project. Do not pass them on or publish them.
+
+## 5. Catalogue preparation (pilot version)
 
 These commands build the common schema, the validation figures and the Year 1 samples.
 
@@ -154,7 +166,7 @@ python scripts/make_year1_sample.py --student-only
 
 They write to `outputs/data/interim/`, `outputs/data/processed/year1/`, `outputs/figures/data_validation/` and `outputs/tables/`.
 
-This stage was tested on four Diffsky shells and on fabricated Flagship rows. It has never processed the real Flagship catalogue or the full set of Diffsky shells. Five limits are known:
+This stage was tested on four Diffsky shells and on fabricated Flagship rows. It has never processed the real Flagship catalogue or the full set of Diffsky shells. `outputs/` is kept for runs on the full catalogues, so the products of the four-shell test are not stored there. Five limits are known:
 
 - Harmonisation stops at the first Flagship row with a zero or negative flux in any band, an axis ratio above 1, or a bulge fraction above 1. The catalogue acquired on 26 November 2026 has no such row.
 - The Flagship `gal_id` is copied from `galaxy_id`, which numbers the galaxies inside one halo and repeats across haloes: it takes 5,373 distinct values in 15,393,044 rows. Only the pair `halo_id` and `galaxy_id` identifies a galaxy.
